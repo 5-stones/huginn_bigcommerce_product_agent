@@ -4,7 +4,7 @@ module BigcommerceProductAgent
             @uri_base = 'catalog/products/:product_id'
 
             def update(id, payload)
-                response = client.put(uri(product_id: id), { data: payload }.to_json)
+                response = client.put(uri(product_id: id), payload.to_json)
                 return response.body['data']
             end
 
