@@ -4,8 +4,8 @@
   "description": "Huginn Agent that takes a generic product interface and upserts that product in BigCommerce.",
   "scripts": {
     "version": "npm run changelog && git add CHANGELOG.md && npm run version:gemspec",
-    "version:gemspec": "node bin/version && git add huginn_acumen_product_agent.gemspec",
-    "gem:build": "gem build huginn_acumen_product_agent.gemspec",
+    "version:gemspec": "node bin/version && git add huginn_bigcommerce_product_agent.gemspec",
+    "gem:build": "gem build huginn_bigcommerce_product_agent.gemspec",
     "gem:push": "node bin/push",
     "gem:release": "npm run gem:build && npm run gem:push",
     "postversion": "git push && git push --tags && npm run gem:release",
