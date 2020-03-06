@@ -2,9 +2,11 @@
 'use strict'
 
 const { exec } = require('child_process');
-const version = require('./package.json').version;
+const pkg = require('../package.json');
+const name = pkg.name;
+const version = pkg.version;
 
-dir = exec(`gem push huginn_http_request_agent-${version}.gem`, (err, stdout, stderr) => {
+const dir = exec(`gem push ${name}-${version}.gem`, (err, stdout, stderr) => {
   if (err) {
     console.log(err);
   }
