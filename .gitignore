@@ -1,3 +1,6 @@
 spec/huginn
+node_modules
 .env
 Gemfile.lock
+*.gem
+.DS_Store

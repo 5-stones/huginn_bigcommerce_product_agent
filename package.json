@@ -1,0 +1,19 @@
+{
+  "name": "huginn_bigcommerce_product_agent",
+  "version": "0.0.0",
+  "description": "Huginn Agent that takes a generic product interface and upserts that product in BigCommerce.",
+  "scripts": {
+    "version": "npm run changelog && git add CHANGELOG.md && npm run version:gemspec",
+    "version:gemspec": "node bin/version && git add huginn_acumen_product_agent.gemspec",
+    "gem:build": "gem build huginn_acumen_product_agent.gemspec",
+    "gem:push": "node bin/push",
+    "gem:release": "npm run gem:build && npm run gem:push",
+    "postversion": "git push && git push --tags && npm run gem:release",
+    "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s -r 0"
+  },
+  "author": "Jacob Spizziri <jspizziri@weare5stones.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "conventional-changelog-cli": "^2.0.23"
+  }
+}
