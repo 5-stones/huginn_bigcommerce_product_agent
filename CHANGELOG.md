@@ -1,3 +1,12 @@
+## [1.0.2](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.0.1...v1.0.2) (2020-03-06)
+
+
+### Bug Fixes
+
+* **Client::Product:** fix issue with product updates ([e0c60ff](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/e0c60ff0f3ee612bffc0feb4fa0ff1d6e23495b5))
+
+
+
 ## [1.0.1](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.0.0...v1.0.1) (2020-03-06)
 
 
