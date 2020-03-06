@@ -8,10 +8,10 @@ Gem::Specification.new do |spec|
   spec.authors       = ["Jacob Spizziri"]
   spec.email         = ["jspizziri@weare5stones.com"]
 
-  spec.summary       = %q{Write a short summary, because Rubygems requires one.}
-  spec.description   = %q{Write a longer description or delete this line.}
+  spec.summary       = %q{Agent that takes a generic product interface and upserts that product in BigCommerce.}
+  spec.description   = %q{Agent that takes a generic product interface and upserts that product in BigCommerce.}
 
-  spec.homepage      = "https://github.com/[my-github-username]/huginn_bigcommerce_product_agent"
+  spec.homepage      = "https://github.com/5-stones/huginn_bigcommerce_product_agent"
 
 
   spec.files         = Dir['LICENSE.txt', 'lib/**/*']
