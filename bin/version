@@ -1,0 +1,22 @@
+#!/usr/bin/env node
+'use strict'
+
+const fs = require('fs')
+const pkg = require('../package.json');
+const version = pkg.version;
+const filePath = `./${pkg.name}.gemspec`;
+
+fs.readFile(filePath, 'utf8', (err, data) => {
+  if (err) {
+    return console.log(err);
+  }
+
+  const reg = /spec.version       = "([^"]+)"/g;
+  const currentVersion = reg.exec(data)[1];
+  console.log(`updating gemspec from v${currentVersion} to v${version}`);
+  const result = data.replace(reg, `spec.version       = "${version}"`);
+
+  fs.writeFile(filePath, result, 'utf8', (err) => {
+     if (err) return console.log(err);
+  });
+});
