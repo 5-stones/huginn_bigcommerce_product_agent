@@ -1,3 +1,12 @@
+# [1.1.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.0.2...v1.1.0) (2020-03-16)
+
+
+### Features
+
+* **client/*,agent,mapper/*:** Add support for metafields ([eefa215](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/eefa21597a5c9e762ff8a5d2731da92be5164ace))
+
+
+
 ## [1.0.2](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.0.1...v1.0.2) (2020-03-06)
 
 
