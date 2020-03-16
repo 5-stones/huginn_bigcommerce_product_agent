@@ -20,6 +20,8 @@ module Agents
                 'client_id' => '',
                 'access_token' => '',
                 'custom_fields_map' => {},
+                'meta_fields_map' => {},
+                'meta_fields_namespace' => '',
             }
         end
 
@@ -38,6 +40,14 @@ module Agents
 
             unless options['custom_fields_map'].is_a?(Hash)
                 errors.add(:base, "if provided, custom_fields_map must be a hash")
+            end
+
+            unless options['meta_fields_map'].is_a?(Hash)
+                errors.add(:base, "if provided, meta_fields_map must be a hash")
+            end
+
+            if options['meta_fields_map']
+                errors.add(:base, "if meta_fields_map is provided, meta_fields_namespace is required") if options['meta_fields_namespace'].blank?
             end
         end
 
@@ -68,10 +78,15 @@ module Agents
             # upsert child products
             bc_children = []
             custom_fields_delete = []
+            meta_fields_upsert = []
+            meta_fields_delete = []
+
             skus.each do |sku|
                 bc_product = bc_products[sku]
                 result = upsert(sku, product, bc_product)
                 custom_fields_delete += result[:custom_fields_delete]
+                meta_fields_upsert += result[:meta_fields_upsert]
+                meta_fields_delete += result[:meta_fields_delete]
                 bc_children.push(result[:product])
             end
 
@@ -79,6 +94,8 @@ module Agents
             bc_wrapper_product = bc_products[wrapper_sku]
             result = upsert(wrapper_sku, product, bc_wrapper_product)
             custom_fields_delete += result[:custom_fields_delete]
+            meta_fields_upsert += result[:meta_fields_upsert]
+            meta_fields_delete += result[:meta_fields_delete]
 
             # update modifier
             sku_option_map = ::BigcommerceProductAgent::Mapper::ProductMapper.get_sku_option_label_map(product)
@@ -91,7 +108,9 @@ module Agents
 
             clean_up_custom_fields(custom_fields_delete)
             clean_up_modifier_values(modifier_updates[:delete])
+            meta_fields = update_meta_fields(meta_fields_upsert, meta_fields_delete)
 
+            product['meta_fields'] = meta_fields
             product['modifiers'] = modifier_updates[:upsert]
             create_event payload: {
                 product: product,
@@ -110,6 +129,12 @@ module Agents
             )
 
             @custom_field = ::BigcommerceProductAgent::Client::CustomField.new(
+                interpolated['store_hash'],
+                interpolated['client_id'],
+                interpolated['access_token']
+            )
+
+            @meta_field = ::BigcommerceProductAgent::Client::MetaField.new(
                 interpolated['store_hash'],
                 interpolated['client_id'],
                 interpolated['access_token']
@@ -136,6 +161,7 @@ module Agents
             )
 
             product_id = bc_product['id'] unless bc_product.nil?
+
             payload = ::BigcommerceProductAgent::Mapper::ProductMapper.payload(
                 sku,
                 product,
@@ -145,9 +171,21 @@ module Agents
 
             bc_product = @product.upsert(payload)
 
+            # Metafields need to be managed separately. Intentionally get them _AFTER_
+            # the upsert so that we have the necessary resource_id (bc_product.id)
+            meta_fields_updates = ::BigcommerceProductAgent::Mapper::MetaFieldMapper.map(
+                interpolated['meta_fields_map'],
+                product,
+                bc_product,
+                @meta_field.get_for_product(bc_product['id']),
+                interpolated['meta_fields_namespace']
+            )
+
             return {
                 product: bc_product,
                 custom_fields_delete: custom_fields_updates[:delete],
+                meta_fields_upsert: meta_fields_updates[:upsert],
+                meta_fields_delete: meta_fields_updates[:delete],
             }
         end
 
@@ -161,6 +199,20 @@ module Agents
             modifier_values.each do |field|
                 @modifier_value.delete(field[:product_id], field[:modifier_id], field[:value_id])
             end
+        end
+
+        def update_meta_fields(upsert_fields, delete_fields)
+            meta_fields = []
+
+            upsert_fields.each do |field|
+                meta_fields << @meta_field.upsert(field)
+            end
+
+            delete_fields.each do |field|
+                @meta_field.delete(field[:resource_id], field[:id])
+            end
+
+            return meta_fields
         end
     end
 end
