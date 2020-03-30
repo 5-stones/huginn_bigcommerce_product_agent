@@ -2,7 +2,7 @@ module BigcommerceProductAgent
     module Mapper
         class ModifierMapper
 
-            def self.map(bc_product, bc_children, sku_option_map)
+            def self.map(bc_product, bc_children, sku_option_map, is_default_map)
                 modifier = {
                     display_name: 'Option',
                     type: 'product_list',
@@ -42,7 +42,7 @@ module BigcommerceProductAgent
                         value_data: {
                             product_id: child['id']
                         },
-                        is_default: false,
+                        is_default: is_default_map[child['sku']],
                         adjusters: {
                             price: nil,
                             weight: nil,
