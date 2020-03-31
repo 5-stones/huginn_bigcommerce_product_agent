@@ -97,12 +97,15 @@ module Agents
             meta_fields_upsert += result[:meta_fields_upsert]
             meta_fields_delete += result[:meta_fields_delete]
 
+            is_default_map = ::BigcommerceProductAgent::Mapper::ProductMapper.get_is_default(product)
+
             # update modifier
             sku_option_map = ::BigcommerceProductAgent::Mapper::ProductMapper.get_sku_option_label_map(product)
             modifier_updates = ::BigcommerceProductAgent::Mapper::ModifierMapper.map(
                 bc_wrapper_product,
                 bc_children,
-                sku_option_map
+                sku_option_map,
+                is_default_map
             )
             @modifier.upsert(result[:product]['id'], modifier_updates[:upsert])
 

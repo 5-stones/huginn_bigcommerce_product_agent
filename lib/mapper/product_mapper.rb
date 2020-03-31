@@ -6,6 +6,7 @@ module BigcommerceProductAgent
                 product = {
                     name: variant.nil? ? product['name'] : "#{product['name']} (#{self.get_option(variant)})",
                     sku: variant ? variant['sku'] : self.get_wrapper_sku(product),
+                    is_default: variant && variant['isDefault'],
                     type: variant && variant['isDigital'] == true ? 'digital' : 'physical',
                     description: product['description'],
                     price: variant && variant['offers'] && variant['offers'][0] ? variant['offers'][0]['price'] : '0',
@@ -55,6 +56,16 @@ module BigcommerceProductAgent
                 end
 
                 return map
+            end
+
+            def self.get_is_default(product)
+              map = {}
+
+              product['model'].each do |model|
+                  map[model['sku']] = model["isDefault"]
+              end
+
+              return map
             end
 
             private
