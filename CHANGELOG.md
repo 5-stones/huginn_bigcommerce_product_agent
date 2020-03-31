@@ -1,3 +1,7 @@
+# [1.2.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.1.0...v1.2.0) (2020-03-31)
+
+
+
 # [1.1.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.0.2...v1.1.0) (2020-03-16)
 
 
