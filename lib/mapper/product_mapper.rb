@@ -2,12 +2,12 @@ module BigcommerceProductAgent
     module Mapper
         class ProductMapper
 
-            def self.map(product, variant, additional_data = {})
+            def self.map(product, variant, additional_data = {}, is_digital = false, default_sku='')
                 product = {
                     name: variant.nil? ? product['name'] : "#{product['name']} (#{self.get_option(variant)})",
-                    sku: variant ? variant['sku'] : self.get_wrapper_sku(product),
+                    sku: variant ? variant['sku'] : default_sku,
                     is_default: variant && variant['isDefault'],
-                    type: variant && variant['isDigital'] == true ? 'digital' : 'physical',
+                    type: (variant && variant['isDigital'] == true) || is_digital ? 'digital' : 'physical',
                     description: product['description'],
                     price: variant && variant['offers'] && variant['offers'][0] ? variant['offers'][0]['price'] : '0',
                     categories: self.get_categories(product),
@@ -36,9 +36,17 @@ module BigcommerceProductAgent
                 "#{product['sku']}-W"
             end
 
-            def self.payload(sku, product, product_id = nil, additional_data = {})
+            def self.get_wrapper_sku_physical(product)
+                self.get_wrapper_sku(product)
+            end
+
+            def self.get_wrapper_sku_digital(product)
+                "#{self.get_wrapper_sku_physical(product)}-DIGITAL"
+            end
+
+            def self.payload(sku, product, product_id = nil, additional_data = {}, is_digital = false)
                 variant = self.get_variant_by_sku(sku, product)
-                payload = self.map(product, variant, additional_data)
+                payload = self.map(product, variant, additional_data, is_digital, sku)
                 payload['id'] = product_id unless product_id.nil?
 
                 return payload
@@ -66,6 +74,36 @@ module BigcommerceProductAgent
               end
 
               return map
+            end
+
+            def self.has_digital_variants?(product)
+                product['model'].any? {|m| m['isDigital'] == true}
+            end
+
+            def self.has_physical_variants?(product)
+                product['model'].any? {|m| m['isDigital'] != true}
+            end
+
+            def self.split_digital_and_physical(product)
+                result = {}
+
+                digitals = product['model'].select {|m| m['isDigital'] == true}
+
+                if digitals.length > 0
+                    clone = Marshal.load(Marshal.dump(product))
+                    clone['model'] = digitals
+                    result[:digital] = clone
+                end
+
+                physicals = product['model'].select {|m| m['isDigital'] != true}
+
+                if physicals.length > 0
+                    clone = Marshal.load(Marshal.dump(product))
+                    clone['model'] = physicals
+                    result[:physical] = clone
+                end
+
+                return result
             end
 
             private

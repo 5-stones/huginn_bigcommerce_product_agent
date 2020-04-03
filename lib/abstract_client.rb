@@ -72,8 +72,17 @@ module BigcommerceProductAgent
                 raise "not implemented yet."
             end
 
+            def delete(payload)
+                raise "not implemented yet."
+            end
+
             def upsert(payload)
                 raise "not implemented yet."
+            end
+
+            def get(url_params = {}, params = {})
+                response = client.get(uri(url_params), params)
+                return response.body['data']
             end
         end
     end

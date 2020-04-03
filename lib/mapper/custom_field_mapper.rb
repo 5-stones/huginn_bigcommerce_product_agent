@@ -40,13 +40,28 @@ module BigcommerceProductAgent
                 return fields
             end
 
+            def self.map_one(bc_product, key, value)
+                field = bc_product['custom_fields'].select {|field| key == 'related_product_id'}.first
+
+                mapped = {
+                    name: key,
+                    value: value.to_s,
+                }
+
+                if field
+                    mapped[:id] = field['id']
+                end
+
+                return mapped
+            end
+
             private
 
             def self.from_property(product, existing_fields, from_key, to_key)
                 if !product[from_key].nil?
                     field = {
                         name: to_key,
-                        value: product[from_key]
+                        value: product[from_key].to_s
                     }
 
                     if existing_fields[to_key]
@@ -64,7 +79,7 @@ module BigcommerceProductAgent
                 if !item.nil?
                     field = {
                         name: to_key,
-                        value: item['value']
+                        value: item['value'].to_s
                     }
 
                     if existing_fields[to_key]
