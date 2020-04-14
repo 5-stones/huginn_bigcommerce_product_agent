@@ -1,3 +1,12 @@
+# [1.3.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.2.0...v1.3.0) (2020-04-14)
+
+
+### Features
+
+* **BigcommerceProductAgent:** enable product creation as Variants ([f20f9bc](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/f20f9bc0d2a4b61d3c498d09524771b0fef02b41))
+
+
+
 # [1.2.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.1.0...v1.2.0) (2020-03-31)
 
 
