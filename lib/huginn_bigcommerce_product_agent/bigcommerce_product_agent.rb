@@ -4,7 +4,6 @@ require 'json'
 
 module Agents
     class BigcommerceProductAgent < Agent
-
         include WebRequestConcern
 
         can_dry_run!
@@ -14,6 +13,13 @@ module Agents
             Takes a generic product interface && upserts that product in BigCommerce.
         MD
 
+        def modes
+            %w[
+                variants
+                option_list
+            ]
+        end
+
         def default_options
             {
                 'store_hash' => '',
@@ -22,6 +28,7 @@ module Agents
                 'custom_fields_map' => {},
                 'meta_fields_map' => {},
                 'meta_fields_namespace' => '',
+                'mode' => modes[0]
             }
         end
 
@@ -39,15 +46,21 @@ module Agents
             end
 
             unless options['custom_fields_map'].is_a?(Hash)
-                errors.add(:base, "if provided, custom_fields_map must be a hash")
+                errors.add(:base, 'if provided, custom_fields_map must be a hash')
             end
 
             unless options['meta_fields_map'].is_a?(Hash)
-                errors.add(:base, "if provided, meta_fields_map must be a hash")
+                errors.add(:base, 'if provided, meta_fields_map must be a hash')
             end
 
             if options['meta_fields_map']
-                errors.add(:base, "if meta_fields_map is provided, meta_fields_namespace is required") if options['meta_fields_namespace'].blank?
+                if options['meta_fields_namespace'].blank?
+                    errors.add(:base, 'if meta_fields_map is provided, meta_fields_namespace is required')
+                end
+            end
+
+            unless options['mode'].present? && modes.include?(options['mode'])
+                errors.add(:base, "mode is a required field and must be one of: #{modes.join(', ')}")
             end
         end
 
@@ -56,22 +69,184 @@ module Agents
         end
 
         def check
-            initialize_clients()
+            initialize_clients
             handle interpolated['payload'].presence || {}
         end
 
         def receive(incoming_events)
-            initialize_clients()
+            initialize_clients
             incoming_events.each do |event|
                 handle(event)
             end
-       end
+        end
 
         def handle(event)
+            method_name = "handle_#{interpolated['mode']}"
+            if self.respond_to?(method_name, true)
+                self.public_send(method_name, event)
+            else
+                raise "'#{interpolated['mode']}' is not a supported mode"
+            end
+        end
+
+        # 1. upsert product
+        # 2. upsert option & option_values
+        # 3. delete old option_values
+        #     - NOTE: deleting an option_value also deletes the variant
+        #       associated with the option_value
+        # 4. upsert variants
+        #     - NOTE: because deleting option values deletes variants
+        #       we need to fetch the variants AFTER deletion has occurred.
+        #     - NOTE: by deleting variants in #3 if option_values on an
+        #       existing variant changes over time, we're effectively deleting
+        #       and then re-adding the variant. Could get weird.
+        def handle_variants(event)
             product = event.payload
 
-            skus = ::BigcommerceProductAgent::Mapper::ProductMapper.get_product_skus(product)
-            wrapper_sku = ::BigcommerceProductAgent::Mapper::ProductMapper.get_wrapper_sku(product)
+            wrapper_skus = {
+                physical: get_mapper(:ProductMapper).get_wrapper_sku_physical(product),
+                digital: get_mapper(:ProductMapper).get_wrapper_sku_digital(product),
+            }
+            bc_products = @product.get_by_skus(
+                wrapper_skus.map {|k,v| v},
+                %w[custom_fields options]
+            )
+
+            split = get_mapper(:ProductMapper).split_digital_and_physical(product)
+            physical = split[:physical]
+            digital = split[:digital]
+
+            # upsert wrapper products
+            split.each do |type, product|
+                is_digital = type == :digital ? true : false
+
+                # modify digital
+                if is_digital
+                    product['name'] = "#{product['name']} (Digital)"
+                end
+
+                wrapper_sku = wrapper_skus[type]
+                bc_product = bc_products[wrapper_sku]
+                variant_option_name = get_mapper(:OptionMapper).variant_option_name
+                bc_option = !bc_product.nil? ? bc_product['options'].select {|opt| opt['display_name'] === variant_option_name}.first : nil
+
+                # ##############################
+                # 1. update wrapper product
+                # ##############################
+                upsert_result = upsert_product(wrapper_sku, product, bc_product, is_digital)
+                bc_product = upsert_result[:product]
+                bc_products[wrapper_sku] = bc_product
+                product_id = bc_products[wrapper_sku]['id']
+
+                # clean up custom/meta fields. there are not batch operations so we might as well do them here.
+                custom_fields_delete = upsert_result[:custom_fields_delete].select {|field| field['name'] != 'related_product_id'}
+                clean_up_custom_fields(custom_fields_delete)
+                update_meta_fields(
+                    upsert_result[:meta_fields_upsert],
+                    upsert_result[:meta_fields_delete],
+                )
+
+                # ##############################
+                # 2. upsert option & option_values
+                # ##############################
+                option_values_map = get_mapper(:ProductMapper).get_sku_option_label_map(product)
+                option_values = option_values_map.map {|k,v| v}
+                option_value_operations = get_mapper(:OptionMapper).option_value_operations(bc_option, option_values)
+                option = get_mapper(:OptionMapper).map(product_id, bc_option, option_value_operations[:create])
+                bc_option = @product_option.upsert(product_id, option)
+
+                # ##############################
+                # 3. delete old option_values
+                # ##############################
+                @product_option_value.delete_all(bc_option, option_value_operations[:delete])
+
+                # ##############################
+                # 4. upsert variants
+                # ##############################
+                variant_skus = get_mapper(:ProductMapper).get_product_skus(product)
+                bc_variants = @product_variant.index(product_id)
+                mapped_variants = product['model'].map do |variant|
+                    bc_variant = bc_variants.select {|v| v['sku'] === variant['sku']}.first
+                    opt = get_mapper(:ProductMapper).get_option(variant)
+                    bc_option_value = bc_option['option_values'].select {|ov| ov['label'] == opt}.first
+
+                    option_value = get_mapper(:VariantMapper).map_option_value(bc_option_value['id'], bc_option['id'])
+
+                    get_mapper(:VariantMapper).map(
+                        variant,
+                        [option_value],
+                        product_id,
+                        bc_variant.nil? ? nil : bc_variant['id'],
+                    )
+                end
+
+                bc_product['variants'] = @variant.upsert(mapped_variants)
+            end
+
+            bc_physical = bc_products[wrapper_skus[:physical]]
+            bc_digital = bc_products[wrapper_skus[:digital]]
+            is_delete_physical = split[:physical].nil? && bc_physical
+            is_delete_digital = split[:digital].nil? && bc_digital
+
+            # ##############################
+            # clean up products that no longer exist
+            # ##############################
+            if is_delete_physical
+                bc_product = bc_products[wrapper_skus[:physical]]
+                @product.delete(bc_product['id'])
+                bc_physical = false
+                bc_product.delete(wrapper_skus[:physical])
+            end
+
+            if is_delete_digital
+                bc_product = bc_products[wrapper_skus[:digital]]
+                @product.delete(bc_product['id'])
+                bc_digital = false
+                bc_product.delete(wrapper_skus[:digital])
+            end
+
+            # ##############################
+            # clean up custom field relationships
+            # ##############################
+            if bc_physical && !bc_digital
+                # clean up related_product_id on physical product
+                bc_product = bc_physical
+                related_custom_field = bc_product['custom_fields'].select {|field| field['name'] == 'related_product_id'}.first
+                @custom_field.delete(bc_product['id'], related_custom_field['id']) unless related_custom_field.nil?
+            elsif !bc_physical && bc_digital
+                # clean up related_product_id on digital product
+                bc_product = bc_digital
+                related_custom_field = bc_product['custom_fields'].select {|field| field['name'] == 'related_product_id'}.first
+                @custom_field.delete(bc_product['id'], related_custom_field['id']) unless related_custom_field.nil?
+            elsif bc_physical && bc_digital
+                # update/add related_product_id on both products
+                bc_physical_related = get_mapper(:CustomFieldMapper).map_one(bc_physical, 'related_product_id', bc_digital['id'])
+                bc_digital_related = get_mapper(:CustomFieldMapper).map_one(bc_digital, 'related_product_id', bc_physical['id'])
+                @custom_field.upsert(bc_physical['id'], bc_physical_related)
+                @custom_field.upsert(bc_digital['id'], bc_digital_related)
+            end
+
+            # ##############################
+            # emit events
+            # ##############################
+            if bc_physical
+                create_event payload: {
+                    product: bc_physical
+                }
+            end
+
+            if bc_digital
+                create_event payload: {
+                    product: bc_digital
+                }
+            end
+        end
+
+        def handle_option_list(event)
+            product = event.payload
+
+            skus = get_mapper(:ProductMapper).get_product_skus(product)
+            wrapper_sku = get_mapper(:ProductMapper).get_wrapper_sku(product)
             all_skus = [].push(*skus).push(wrapper_sku)
             bc_products = @product.get_by_skus(all_skus)
 
@@ -83,7 +258,7 @@ module Agents
 
             skus.each do |sku|
                 bc_product = bc_products[sku]
-                result = upsert(sku, product, bc_product)
+                result = upsert_product(sku, product, bc_product)
                 custom_fields_delete += result[:custom_fields_delete]
                 meta_fields_upsert += result[:meta_fields_upsert]
                 meta_fields_delete += result[:meta_fields_delete]
@@ -92,16 +267,16 @@ module Agents
 
             # upsert wrapper
             bc_wrapper_product = bc_products[wrapper_sku]
-            result = upsert(wrapper_sku, product, bc_wrapper_product)
+            result = upsert_product(wrapper_sku, product, bc_wrapper_product)
             custom_fields_delete += result[:custom_fields_delete]
             meta_fields_upsert += result[:meta_fields_upsert]
             meta_fields_delete += result[:meta_fields_delete]
 
-            is_default_map = ::BigcommerceProductAgent::Mapper::ProductMapper.get_is_default(product)
+            is_default_map = get_mapper(:ProductMapper).get_is_default(product)
 
             # update modifier
-            sku_option_map = ::BigcommerceProductAgent::Mapper::ProductMapper.get_sku_option_label_map(product)
-            modifier_updates = ::BigcommerceProductAgent::Mapper::ModifierMapper.map(
+            sku_option_map = get_mapper(:ProductMapper).get_sku_option_label_map(product)
+            modifier_updates = get_mapper(:ModifierMapper).map(
                 bc_wrapper_product,
                 bc_children,
                 sku_option_map,
@@ -118,46 +293,39 @@ module Agents
             create_event payload: {
                 product: product,
                 parent: result[:product],
-                children: bc_children,
+                children: bc_children
             }
         end
 
         private
 
         def initialize_clients
-            @product = ::BigcommerceProductAgent::Client::Product.new(
-                interpolated['store_hash'],
-                interpolated['client_id'],
-                interpolated['access_token']
-            )
+            @variant = initialize_client(:Variant)
+            @product_variant = initialize_client(:ProductVariant)
+            @product_option = initialize_client(:ProductOption)
+            @product_option_value = initialize_client(:ProductOptionValue)
+            @product = initialize_client(:Product)
+            @custom_field = initialize_client(:CustomField)
+            @meta_field = initialize_client(:MetaField)
+            @modifier = initialize_client(:Modifier)
+            @modifier_value = initialize_client(:ModifierValue)
+        end
 
-            @custom_field = ::BigcommerceProductAgent::Client::CustomField.new(
-                interpolated['store_hash'],
-                interpolated['client_id'],
-                interpolated['access_token']
-            )
-
-            @meta_field = ::BigcommerceProductAgent::Client::MetaField.new(
-                interpolated['store_hash'],
-                interpolated['client_id'],
-                interpolated['access_token']
-            )
-
-            @modifier = ::BigcommerceProductAgent::Client::Modifier.new(
-                interpolated['store_hash'],
-                interpolated['client_id'],
-                interpolated['access_token']
-            )
-
-            @modifier_value = ::BigcommerceProductAgent::Client::ModifierValue.new(
+        def initialize_client(class_name)
+            klass = ::BigcommerceProductAgent::Client.const_get(class_name.to_sym)
+            return klass.new(
                 interpolated['store_hash'],
                 interpolated['client_id'],
                 interpolated['access_token']
             )
         end
 
-        def upsert(sku, product, bc_product = nil)
-            custom_fields_updates = ::BigcommerceProductAgent::Mapper::CustomFieldMapper.map(
+        def get_mapper(class_name)
+            return ::BigcommerceProductAgent::Mapper.const_get(class_name.to_sym)
+        end
+
+        def upsert_product(sku, product, bc_product = nil, is_digital=false)
+            custom_fields_updates = get_mapper(:CustomFieldMapper).map(
                 interpolated['custom_fields_map'],
                 product,
                 bc_product
@@ -165,18 +333,21 @@ module Agents
 
             product_id = bc_product['id'] unless bc_product.nil?
 
-            payload = ::BigcommerceProductAgent::Mapper::ProductMapper.payload(
+            payload = get_mapper(:ProductMapper).payload(
                 sku,
                 product,
                 product_id,
-                { custom_fields: custom_fields_updates[:upsert] }
+                { custom_fields: custom_fields_updates[:upsert] },
+                is_digital,
             )
 
-            bc_product = @product.upsert(payload)
+            bc_product = @product.upsert(payload, {
+                include: %w[custom_fields variants options].join(',')
+            })
 
             # Metafields need to be managed separately. Intentionally get them _AFTER_
             # the upsert so that we have the necessary resource_id (bc_product.id)
-            meta_fields_updates = ::BigcommerceProductAgent::Mapper::MetaFieldMapper.map(
+            meta_fields_updates = get_mapper(:MetaFieldMapper).map(
                 interpolated['meta_fields_map'],
                 product,
                 bc_product,
@@ -184,11 +355,11 @@ module Agents
                 interpolated['meta_fields_namespace']
             )
 
-            return {
+            {
                 product: bc_product,
                 custom_fields_delete: custom_fields_updates[:delete],
                 meta_fields_upsert: meta_fields_updates[:upsert],
-                meta_fields_delete: meta_fields_updates[:delete],
+                meta_fields_delete: meta_fields_updates[:delete]
             }
         end
 
@@ -215,7 +386,7 @@ module Agents
                 @meta_field.delete(field[:resource_id], field[:id])
             end
 
-            return meta_fields
+            meta_fields
         end
     end
 end
