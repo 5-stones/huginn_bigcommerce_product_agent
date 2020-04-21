@@ -119,10 +119,12 @@ module Agents
             # upsert wrapper products
             split.each do |type, product|
                 is_digital = type == :digital ? true : false
+                product['additionalProperty'].select {|field| field['propertyID'] === 'is_master'}.first['value'] = "1"
 
                 # modify digital
                 if is_digital
                     product['name'] = "#{product['name']} (Digital)"
+                    product['additionalProperty'].select {|field| field['propertyID'] === 'is_master'}.first['value'] = "0"
                 end
 
                 wrapper_sku = wrapper_skus[type]
@@ -220,6 +222,7 @@ module Agents
                 @custom_field.delete(bc_product['id'], related_custom_field['id']) unless related_custom_field.nil?
             elsif bc_physical && bc_digital
                 # update/add related_product_id on both products
+                bc_digital['custom_fields'].select {|field| field['name'] === 'is_master'}.first['value'] = "0"
                 bc_physical_related = get_mapper(:CustomFieldMapper).map_one(bc_physical, 'related_product_id', bc_digital['id'])
                 bc_digital_related = get_mapper(:CustomFieldMapper).map_one(bc_digital, 'related_product_id', bc_physical['id'])
                 @custom_field.upsert(bc_physical['id'], bc_physical_related)
