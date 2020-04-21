@@ -112,7 +112,10 @@ module Agents
                 %w[custom_fields options]
             )
 
-            split = get_mapper(:ProductMapper).split_digital_and_physical(product)
+            split = get_mapper(:ProductMapper).split_digital_and_physical(
+              product,
+              interpolated['custom_fields_map']
+            )
             physical = split[:physical]
             digital = split[:digital]
 
