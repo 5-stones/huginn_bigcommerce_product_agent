@@ -84,7 +84,7 @@ module BigcommerceProductAgent
                 product['model'].any? {|m| m['isDigital'] != true}
             end
 
-            def self.split_digital_and_physical(product)
+            def self.split_digital_and_physical(product, field_map)
                 result = {}
 
                 digitals = product['model'].select {|m| m['isDigital'] == true}
@@ -92,6 +92,7 @@ module BigcommerceProductAgent
                 if digitals.length > 0
                     clone = Marshal.load(Marshal.dump(product))
                     clone['model'] = digitals
+                    self.merge_additional_properties(clone, field_map)
                     result[:digital] = clone
                 end
 
@@ -100,6 +101,7 @@ module BigcommerceProductAgent
                 if physicals.length > 0
                     clone = Marshal.load(Marshal.dump(product))
                     clone['model'] = physicals
+                    self.merge_additional_properties(clone, field_map)
                     result[:physical] = clone
                 end
 
@@ -158,6 +160,17 @@ module BigcommerceProductAgent
                 product['model'].select {|m| m['sku'] == sku}.first
             end
 
+            def self.merge_additional_properties(clone, field_map)
+                defaultVariant = clone['model'].select { |v| v['isDefault'] }.first
+                if defaultVariant['isDefault'] && defaultVariant['additionalProperty']
+                    unless  field_map.nil? || field_map['additionalProperty'].nil?
+                        field_map['additionalProperty'].each do |field, key|
+                            prop = defaultVariant['additionalProperty'].select { |prop| prop['propertyID'] == field[key] }.first
+                            clone['additionalProperty'].push(prop) unless prop.nil?
+                        end
+                    end
+                end
+            end
         end
     end
 end
