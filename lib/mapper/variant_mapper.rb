@@ -18,7 +18,7 @@ module BigcommerceProductAgent
                     fixed_cost_shipping_price: nil,
                     purchasing_disabled: false,
                     purchasing_disabled_message: '',
-                    upc: variant['gtin12'],
+                    upc: variant['isbn'] ? variant['isbn'] : variant['gtin12'],
                     inventory_level: nil,
                     inventory_warning_level: nil,
                     bin_picking_number: nil,
