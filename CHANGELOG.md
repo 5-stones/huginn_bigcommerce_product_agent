@@ -1,3 +1,12 @@
+## [1.3.5](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.3.4...v1.3.5) (2020-04-30)
+
+
+### Bug Fixes
+
+* **product_mapper:** pull dimensions into the wrapper product from the default ([0d5a557](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/0d5a55790742aa8b109b17e7979e00e1612bb69e))
+
+
+
 ## [1.3.4](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.3.3...v1.3.4) (2020-04-30)
 
 
