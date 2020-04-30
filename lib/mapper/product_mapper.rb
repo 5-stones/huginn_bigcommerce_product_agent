@@ -3,33 +3,47 @@ module BigcommerceProductAgent
         class ProductMapper
 
             def self.map(product, variant, additional_data = {}, is_digital = false, default_sku='')
-                product = {
-                    name: variant.nil? ? product['name'] : "#{product['name']} (#{self.get_option(variant)})",
+                name = product['name']
+
+                if variant
+                    # variants inherit from and override parent product info
+                    name = "#{name} (#{self.get_option(variant)})"
+                    product = product.merge(variant)
+                else
+                    # wrapper product
+                    default_variant = self.get_variant_by_sku(product['sku'])
+                    if default_variant
+                        # pull up some properties from default variant (since bc doesn't display them otherwise)
+                        product = {
+                            weight: default_variant['weight'],
+                            width: default_variant['width'],
+                            depth: default_variant['depth'],
+                            height: default_variant['height'],
+                        }.merge(product)
+                    end
+                end
+
+                result = {
+                    name: name,
                     sku: variant ? variant['sku'] : default_sku,
-                    is_default: variant && variant['isDefault'],
-                    type: (variant && variant['isDigital'] == true) || is_digital ? 'digital' : 'physical',
+                    is_default: product['isDefault'],
+                    type: product['isDigital'] == true || is_digital ? 'digital' : 'physical',
                     description: product['description'],
-                    price: variant && variant['offers'] && variant['offers'][0] ? variant['offers'][0]['price'] : '0',
+                    price: product['offers'] && product['offers'][0] ? product['offers'][0]['price'] : '0',
                     categories: self.get_categories(product),
                     available: 'available',
-                    weight: variant && variant['weight'] ? variant['weight']['value'] : '0',
-                    width: variant && variant['width'] ? variant['width']['value'] : '0',
-                    depth: variant && variant['depth'] ? variant['depth']['value'] : '0',
-                    height: variant && variant['height'] ? variant['height']['value'] : '0',
+                    weight: product['weight'] ? product['weight']['value'] : '0',
+                    width: product['width'] ? product['width']['value'] : '0',
+                    depth: product['depth'] ? product['depth']['value'] : '0',
+                    height: product['height'] ? product['height']['value'] : '0',
                     meta_keywords: self.meta_keywords(product),
                     meta_description: self.meta_description(product),
                     search_keywords: self.meta_keywords(product).join(','),
-                    is_visible: variant.nil? ? true : false,
-                }.merge(additional_data)
+                    is_visible: variant ? false : true,
+                }
+                result[:upc] = product['gtin12'] if product['gtin12']
 
-
-                upc = variant ? variant['gtin12'] : product['gtin12']
-
-                if upc
-                    product[:upc] = upc
-                end
-
-                return product
+                result.merge(additional_data)
             end
 
             def self.get_wrapper_sku(product)
