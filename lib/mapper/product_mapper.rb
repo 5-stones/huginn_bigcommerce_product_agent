@@ -11,14 +11,14 @@ module BigcommerceProductAgent
                     product = product.merge(variant)
                 else
                     # wrapper product
-                    default_variant = self.get_variant_by_sku(product['sku'])
+                    default_variant = self.get_variant_by_sku(product['sku'], product)
                     if default_variant
                         # pull up some properties from default variant (since bc doesn't display them otherwise)
                         product = {
-                            weight: default_variant['weight'],
-                            width: default_variant['width'],
-                            depth: default_variant['depth'],
-                            height: default_variant['height'],
+                            "weight" => default_variant['weight'],
+                            "width" => default_variant['width'],
+                            "depth" => default_variant['depth'],
+                            "height" => default_variant['height'],
                         }.merge(product)
                     end
                 end
