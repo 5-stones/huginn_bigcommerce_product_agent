@@ -122,6 +122,7 @@ module BigcommerceProductAgent
                 if physicals.length > 0
                     clone = Marshal.load(Marshal.dump(product))
                     clone['model'] = physicals
+                    clone['sku'] = clone['model'].select {|m| m['isDefault'] = true}.first['sku']
                     self.merge_additional_properties(clone, field_map)
                     result[:physical] = clone
                 end
