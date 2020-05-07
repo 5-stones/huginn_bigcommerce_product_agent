@@ -103,15 +103,6 @@ module Agents
         def handle_variants(event)
             product = event.payload
 
-            wrapper_skus = {
-                physical: get_mapper(:ProductMapper).get_wrapper_sku_physical(product),
-                digital: get_mapper(:ProductMapper).get_wrapper_sku_digital(product),
-            }
-            bc_products = @product.get_by_skus(
-                wrapper_skus.map {|k,v| v},
-                %w[custom_fields options]
-            )
-
             split = get_mapper(:ProductMapper).split_digital_and_physical(
               product,
               interpolated['custom_fields_map']
@@ -119,6 +110,15 @@ module Agents
             physical = split[:physical]
             digital = split[:digital]
 
+            wrapper_skus = {
+                physical: get_mapper(:ProductMapper).get_wrapper_sku_physical(physical),
+                digital: get_mapper(:ProductMapper).get_wrapper_sku_digital(digital),
+            }
+
+            bc_products = @product.get_by_skus(
+                wrapper_skus.map {|k,v| v},
+                %w[custom_fields options]
+            )
             # upsert wrapper products
             split.each do |type, product|
                 is_digital = type == :digital ? true : false
