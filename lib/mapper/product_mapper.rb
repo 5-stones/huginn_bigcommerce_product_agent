@@ -47,27 +47,16 @@ module BigcommerceProductAgent
             end
 
             def self.get_wrapper_sku(product)
-                "#{product['sku']}-W"
-            end
-
-            def self.get_wrapper_sku_physical(product)
-                self.get_wrapper_sku(product)
-            end
-
-            def self.get_wrapper_sku_digital(product)
-                self.get_wrapper_sku(product)
+                if product
+                    "#{product['sku']}-W"
+                end
             end
 
             def self.payload(sku, product, product_id = nil, additional_data = {}, is_digital = false)
                 variant = self.get_variant_by_sku(sku, product)
                 payload = self.map(product, variant, additional_data, is_digital, sku)
                 payload[:id] = product_id unless product_id.nil?
-
-                if payload[:type] == "digital"
-                    payload[:sku] = self.get_wrapper_sku_digital(product)
-                else
-                    payload[:sku] = self.get_wrapper_sku_physical(product)
-                end
+                payload[:sku] = self.get_wrapper_sku(product)
 
                 return payload
             end

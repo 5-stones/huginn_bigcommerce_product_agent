@@ -111,8 +111,8 @@ module Agents
             digital = split[:digital]
 
             wrapper_skus = {
-                physical: get_mapper(:ProductMapper).get_wrapper_sku_physical(physical),
-                digital: get_mapper(:ProductMapper).get_wrapper_sku_digital(digital),
+                physical: get_mapper(:ProductMapper).get_wrapper_sku(physical),
+                digital: get_mapper(:ProductMapper).get_wrapper_sku(digital),
             }
 
             bc_products = @product.get_by_skus(
