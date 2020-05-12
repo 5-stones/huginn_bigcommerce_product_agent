@@ -25,7 +25,7 @@ module BigcommerceProductAgent
 
                 result = {
                     name: name,
-                    sku: variant ? variant['sku'] : default_sku,
+                    sku: product ? product['sku'] : default_sku,
                     is_default: product['isDefault'],
                     type: product['isDigital'] == true || is_digital ? 'digital' : 'physical',
                     description: product['description'],
@@ -47,21 +47,16 @@ module BigcommerceProductAgent
             end
 
             def self.get_wrapper_sku(product)
-                "#{product['sku']}-W"
-            end
-
-            def self.get_wrapper_sku_physical(product)
-                self.get_wrapper_sku(product)
-            end
-
-            def self.get_wrapper_sku_digital(product)
-                "#{self.get_wrapper_sku_physical(product)}-DIGITAL"
+                if product
+                    "#{product['sku']}-W"
+                end
             end
 
             def self.payload(sku, product, product_id = nil, additional_data = {}, is_digital = false)
                 variant = self.get_variant_by_sku(sku, product)
                 payload = self.map(product, variant, additional_data, is_digital, sku)
-                payload['id'] = product_id unless product_id.nil?
+                payload[:id] = product_id unless product_id.nil?
+                payload[:sku] = self.get_wrapper_sku(product)
 
                 return payload
             end
@@ -106,6 +101,7 @@ module BigcommerceProductAgent
                 if digitals.length > 0
                     clone = Marshal.load(Marshal.dump(product))
                     clone['model'] = digitals
+                    clone['sku'] = clone['model'].select {|m| m['isDefault'] = true}.first['sku']
                     self.merge_additional_properties(clone, field_map)
                     result[:digital] = clone
                 end
@@ -115,6 +111,7 @@ module BigcommerceProductAgent
                 if physicals.length > 0
                     clone = Marshal.load(Marshal.dump(product))
                     clone['model'] = physicals
+                    clone['sku'] = clone['model'].select {|m| m['isDefault'] = true}.first['sku']
                     self.merge_additional_properties(clone, field_map)
                     result[:physical] = clone
                 end

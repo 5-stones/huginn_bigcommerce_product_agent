@@ -26,8 +26,8 @@ module BigcommerceProductAgent
 
             def upsert(payload, params={})
                 begin
-                    if payload['id']
-                        return update(payload['id'], payload, params)
+                    if payload[:id]
+                        return update(payload[:id], payload, params)
                     else
                         return create(payload, params)
                     end
