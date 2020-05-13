@@ -1,3 +1,12 @@
+# [1.4.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.3.5...v1.4.0) (2020-05-13)
+
+
+### Features
+
+* **product, bigcommerce_product_agent, product_mapper:** wrapper sku ([da74850](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/da74850bff697576e0deef4eac05334c321d1d7f))
+
+
+
 ## [1.3.5](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.3.4...v1.3.5) (2020-04-30)
 
 
