@@ -236,8 +236,6 @@ module Agents
             # emit events
             # ##############################
             if bc_physical
-                Rails.logger.info("waldo the physical")
-                Rails.logger.info(bc_physical.inspect)
                 create_event payload: {
                     product: bc_physical
                 }
