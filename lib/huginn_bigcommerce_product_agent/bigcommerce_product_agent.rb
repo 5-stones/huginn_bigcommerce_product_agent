@@ -138,16 +138,19 @@ module Agents
                 # ##############################
                 upsert_result = upsert_product(wrapper_sku, product, bc_product, is_digital)
                 bc_product = upsert_result[:product]
-                bc_products[wrapper_sku] = bc_product
-                product_id = bc_products[wrapper_sku]['id']
 
                 # clean up custom/meta fields. there are not batch operations so we might as well do them here.
                 custom_fields_delete = upsert_result[:custom_fields_delete].select {|field| field['name'] != 'related_product_id'}
                 clean_up_custom_fields(custom_fields_delete)
-                update_meta_fields(
+                meta_fields = update_meta_fields(
                     upsert_result[:meta_fields_upsert],
                     upsert_result[:meta_fields_delete],
                 )
+
+                bc_product['meta_fields'] = meta_fields
+
+                bc_products[wrapper_sku] = bc_product
+                product_id = bc_products[wrapper_sku]['id']
 
                 # ##############################
                 # 2. upsert option & option_values
