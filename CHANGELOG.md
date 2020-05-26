@@ -1,3 +1,12 @@
+## [1.4.1](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.4.0...v1.4.1) (2020-05-26)
+
+
+### Bug Fixes
+
+* **lib/huginn_bigcommerce_product_agent:** make sure meta_fields are being passed into new event ([8de65e7](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/8de65e7cf31afb542674cd38486eea6762216438))
+
+
+
 # [1.4.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.3.5...v1.4.0) (2020-05-13)
 
 
