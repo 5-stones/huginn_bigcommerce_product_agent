@@ -29,10 +29,12 @@ module BigcommerceProductAgent
                     mapped[:id] = variant_id
                 end
 
-                not_purchasable_format_list.each do |format|
-                    if format == bc_option_value['label']
-                        mapped[:purchasing_disabled] = true
-                    end
+                unless not_purchasable_format_list.nil?
+                  not_purchasable_format_list.each do |format|
+                      if format == bc_option_value['label']
+                          mapped[:purchasing_disabled] = true
+                      end
+                  end
                 end
 
                 return mapped
