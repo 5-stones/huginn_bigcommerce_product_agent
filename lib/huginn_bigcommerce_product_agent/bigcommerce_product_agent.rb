@@ -64,8 +64,8 @@ module Agents
                 errors.add(:base, "mode is a required field and must be one of: #{modes.join(', ')}")
             end
 
-            unless options['not_purchasable_format_list'].is_a?(Array)
-                errors.add(:base, 'not_purchasable_format_list is a required field')
+            unless options['notpurchasable_format_list'].present? && !options['not_purchasable_format_list'].is_a?(Array)
+                errors.add(:base, 'not_purchasable_format_list must be an Array')
             end
         end
 
