@@ -28,7 +28,7 @@ module BigcommerceProductAgent
                     sku: product ? product['sku'] : default_sku,
                     is_default: product['isDefault'],
                     type: product['isDigital'] == true || is_digital ? 'digital' : 'physical',
-                    description: product['description'],
+                    description: product['description'] || '',
                     price: product['offers'] && product['offers'][0] ? product['offers'][0]['price'] : '0',
                     categories: self.get_categories(product),
                     available: 'available',
@@ -37,7 +37,7 @@ module BigcommerceProductAgent
                     depth: product['depth'] ? product['depth']['value'] : '0',
                     height: product['height'] ? product['height']['value'] : '0',
                     meta_keywords: self.meta_keywords(product),
-                    meta_description: self.meta_description(product),
+                    meta_description: self.meta_description(product) || '',
                     search_keywords: self.meta_keywords(product).join(','),
                     is_visible: variant ? false : true,
                 }
