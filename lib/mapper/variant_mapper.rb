@@ -2,7 +2,7 @@ module BigcommerceProductAgent
     module Mapper
         class VariantMapper
 
-            def self.map(variant, option_values, product_id, variant_id=nil)
+            def self.map(variant, option_values, product_id, variant_id=nil, not_purchasable_format_list, bc_option_value)
                 mapped = {
                     product_id: product_id,
                     sku: variant['sku'],
@@ -27,6 +27,14 @@ module BigcommerceProductAgent
 
                 if variant_id
                     mapped[:id] = variant_id
+                end
+
+                unless not_purchasable_format_list.nil?
+                  not_purchasable_format_list.each do |format|
+                      if format == bc_option_value['label']
+                          mapped[:purchasing_disabled] = true
+                      end
+                  end
                 end
 
                 return mapped

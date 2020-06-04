@@ -28,7 +28,8 @@ module Agents
                 'custom_fields_map' => {},
                 'meta_fields_map' => {},
                 'meta_fields_namespace' => '',
-                'mode' => modes[0]
+                'mode' => modes[0],
+                'not_purchasable_format_list' => []
             }
         end
 
@@ -61,6 +62,10 @@ module Agents
 
             unless options['mode'].present? && modes.include?(options['mode'])
                 errors.add(:base, "mode is a required field and must be one of: #{modes.join(', ')}")
+            end
+
+            unless options['not_purchasable_format_list'].present? && !options['not_purchasable_format_list'].is_a?(Array)
+                errors.add(:base, 'not_purchasable_format_list must be an Array')
             end
         end
 
@@ -183,6 +188,8 @@ module Agents
                         [option_value],
                         product_id,
                         bc_variant.nil? ? nil : bc_variant['id'],
+                        interpolated['not_purchasable_format_list'],
+                        bc_option_value
                     )
                 end
 
