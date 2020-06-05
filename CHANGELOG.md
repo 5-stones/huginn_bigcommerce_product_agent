@@ -1,3 +1,12 @@
+## [1.4.2](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.4.1...v1.4.2) (2020-06-05)
+
+
+### Features
+
+* **variant_mapper, bigcommerce_product_agent:** list of not purchasable ([27c37e0](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/27c37e08583e064a92ab10031fe7753f0e7170ff))
+
+
+
 ## [1.4.1](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.4.0...v1.4.1) (2020-05-26)
 
 
