@@ -38,7 +38,7 @@ module BigcommerceProductAgent
                     height: product['height'] ? product['height']['value'] : '0',
                     meta_keywords: self.meta_keywords(product),
                     meta_description: self.meta_description(product) || '',
-                    search_keywords: self.meta_keywords(product).join(','),
+                    search_keywords: self.get_search_keywords(additional_data.delete(:additional_search_terms), product),
                     is_visible: variant ? false : true,
                 }
                 result[:upc] = product['gtin12'] if product['gtin12']
@@ -181,6 +181,11 @@ module BigcommerceProductAgent
                         end
                     end
                 end
+            end
+
+            # get a list of search keywords for the products
+            def self.get_search_keywords(additional_search_terms, product)
+                return (self.meta_keywords(product) + additional_search_terms.split(",")).join(",")
             end
         end
     end

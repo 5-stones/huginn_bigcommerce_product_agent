@@ -124,6 +124,16 @@ module Agents
                 wrapper_skus.map {|k,v| v},
                 %w[custom_fields options]
             )
+            #save skus
+            digital_skus = []
+            physical_skus = []
+            if split[:digital] and split[:physical]
+                digital_skus.concat([wrapper_skus[:digital]])
+                digital_skus.concat(get_mapper(:ProductMapper).get_product_skus(split[:digital])).join(",")
+                physical_skus.concat([wrapper_skus[:physical]])
+                physical_skus.concat(get_mapper(:ProductMapper).get_product_skus(split[:physical])).join(",")
+            end
+
             # upsert wrapper products
             split.each do |type, product|
                 is_digital = type == :digital ? true : false
@@ -138,10 +148,11 @@ module Agents
                 variant_option_name = get_mapper(:OptionMapper).variant_option_name
                 bc_option = !bc_product.nil? ? bc_product['options'].select {|opt| opt['display_name'] === variant_option_name}.first : nil
 
+                search_skus = is_digital ? physical_skus : digital_skus
                 # ##############################
                 # 1. update wrapper product
                 # ##############################
-                upsert_result = upsert_product(wrapper_sku, product, bc_product, is_digital)
+                upsert_result = upsert_product(wrapper_sku, product, bc_product, is_digital, search_skus)
                 bc_product = upsert_result[:product]
 
                 # clean up custom/meta fields. there are not batch operations so we might as well do them here.
@@ -337,7 +348,7 @@ module Agents
             return ::BigcommerceProductAgent::Mapper.const_get(class_name.to_sym)
         end
 
-        def upsert_product(sku, product, bc_product = nil, is_digital=false)
+        def upsert_product(sku, product, bc_product = nil, is_digital=false, search_skus=[])
             custom_fields_updates = get_mapper(:CustomFieldMapper).map(
                 interpolated['custom_fields_map'],
                 product,
@@ -350,7 +361,10 @@ module Agents
                 sku,
                 product,
                 product_id,
-                { custom_fields: custom_fields_updates[:upsert] },
+                {
+                    additional_search_terms: search_skus,
+                    custom_fields: custom_fields_updates[:upsert]
+                },
                 is_digital,
             )
 
