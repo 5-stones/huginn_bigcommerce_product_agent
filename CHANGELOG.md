@@ -1,3 +1,12 @@
+# [1.5.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.4.3...v1.5.0) (2020-06-12)
+
+
+### Features
+
+* **bigcommerce_product_agent.rb, product_mapper.rb:** add product skus to search terms ([9d6f6a8](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/9d6f6a8729d9e33d2de52580675a1a96fe55ffac))
+
+
+
 ## [1.4.3](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.4.2...v1.4.3) (2020-06-05)
 
 
