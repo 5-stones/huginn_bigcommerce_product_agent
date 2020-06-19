@@ -1,3 +1,12 @@
+# [1.6.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.5.0...v1.6.0) (2020-06-19)
+
+
+### Features
+
+* **product_mapper:** update availability on products ([a120daf](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/a120daf550a96e048a0f5f796ab6e66df28b8767))
+
+
+
 # [1.5.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.4.3...v1.5.0) (2020-06-12)
 
 
