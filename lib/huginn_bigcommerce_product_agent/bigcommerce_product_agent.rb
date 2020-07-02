@@ -29,7 +29,8 @@ module Agents
                 'meta_fields_map' => {},
                 'meta_fields_namespace' => '',
                 'mode' => modes[0],
-                'not_purchasable_format_list' => []
+                'not_purchasable_format_list' => [],
+                'should_disambiguate' => false
             }
         end
 
@@ -67,6 +68,11 @@ module Agents
             if options['not_purchasable_format_list'].present? && !options['not_purchasable_format_list'].is_a?(Array)
                 errors.add(:base, 'not_purchasable_format_list must be an Array')
             end
+
+            if options.has_key?('should_disambiguate') && boolify(options['should_disambiguate']).nil?
+                errors.add(:base, 'when provided, `should_disambiguate` must be either true or false')
+            end
+
         end
 
         def working?
@@ -141,6 +147,16 @@ module Agents
                 # modify digital
                 if is_digital
                     product['name'] = "#{product['name']} (Digital)"
+                end
+
+                # Ignatius Press -- some products have the same name and must be disambiguated.
+                # ...by adding a list of the product types (hardback, paperback, etc.) to their names
+                if boolify(options['should_disambiguate'])
+                    product['name'] += " |~ " + product['model'].map { |m|
+                       m['additionalProperty'].find { |p|
+                           p['propertyID'] == 'option'
+                       }['value']
+                    }.join(", ")
                 end
 
                 wrapper_sku = wrapper_skus[type]
