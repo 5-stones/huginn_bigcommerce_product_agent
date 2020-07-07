@@ -1,3 +1,12 @@
+# [1.7.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.6.0...v1.7.0) (2020-07-07)
+
+
+### Features
+
+* **huginn_bigcommerce_product_agent.rb:** disambiguate products by listing product types in name ([e063565](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/e063565983cfd7827b8db5db34e333359ea6afea))
+
+
+
 # [1.6.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.5.0...v1.6.0) (2020-06-19)
 
 
