@@ -1,3 +1,12 @@
+# [1.8.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.7.0...v1.8.0) (2020-07-14)
+
+
+### Features
+
+* **client/product.rb:** improve error logging for bad server responses ([9a0c671](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/9a0c6718d55e729b2446bc7be211165c77bc7f97))
+
+
+
 # [1.7.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.6.0...v1.7.0) (2020-07-07)
 
 
