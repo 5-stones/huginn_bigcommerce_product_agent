@@ -1,3 +1,17 @@
+# [1.9.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.8.0...v1.9.0) (2020-07-15)
+
+
+### Bug Fixes
+
+* **bigcommerce_product_agent.rb, product_mapper.rb:** define a page title with no disambiguation tag ([57c663e](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/57c663e191abebf40286499b3ae652644367fccb))
+
+
+### Features
+
+* **variant.rb:** log payload of errors in variants ([0b4fe27](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/0b4fe277cd1d7a649e0d59d6d80941d4c90ba5a6))
+
+
+
 # [1.8.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.7.0...v1.8.0) (2020-07-14)
 
 
