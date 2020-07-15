@@ -152,6 +152,7 @@ module Agents
                 # Ignatius Press -- some products have the same name and must be disambiguated.
                 # ...by adding a list of the product types (hardback, paperback, etc.) to their names
                 if boolify(options['should_disambiguate'])
+                    product['page_title'] = product['name']
                     product['name'] += " |~ " + product['model'].map { |m|
                        m['additionalProperty'].find { |p|
                            p['propertyID'] == 'option'
