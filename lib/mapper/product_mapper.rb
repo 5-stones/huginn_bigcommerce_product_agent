@@ -46,6 +46,7 @@ module BigcommerceProductAgent
                     preorder_release_date: product['releaseDate'] && product['releaseDate'].to_datetime ? product['releaseDate'].to_datetime.strftime("%FT%T%:z") : nil,
                     preorder_message: self.get_availability(product) == 'preorder' ? product['availability'] : '',
                     is_preorder_only: self.get_availability(product) == 'preorder' ? true : false,
+                    page_title: product['page_title'] || '',
                 }
                 result[:upc] = product['gtin12'] if product['gtin12']
 
