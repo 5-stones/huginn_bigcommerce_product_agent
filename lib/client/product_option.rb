@@ -33,8 +33,12 @@ module BigcommerceProductAgent
             end
 
             def create(product_id, option)
-                response = client.post(uri(product_id: product_id), option.to_json)
-                return response.body['data']
+                begin
+                    response = client.post(uri(product_id: product_id), option.to_json)
+                    return response.body['data']
+                rescue Faraday::Error::ClientError => e
+                    raise e, "\n#{e.message}\nFailed to upsert product_option = #{option.to_json}\nfor product with id = #{product_id}\n", e.backtrace
+                end
             end
         end
     end
