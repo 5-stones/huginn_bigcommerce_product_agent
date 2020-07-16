@@ -42,7 +42,11 @@ module BigcommerceProductAgent
             end
 
             def delete(product_id, meta_field_id)
-                client.delete(uri(product_id: product_id, meta_field_id: meta_field_id))
+                begin
+                    client.delete(uri(product_id: product_id, meta_field_id: meta_field_id))
+                rescue Faraday::Error::ClientError => e
+                    raise e, "\n#{e.message}\nFailed to delete meta_field with id = #{meta_field_id}\nfor product with id = #{product_id}\n", e.backtrace
+                end
             end
         end
     end
