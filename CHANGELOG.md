@@ -1,3 +1,12 @@
+# [1.10.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.9.0...v1.10.0) (2020-07-16)
+
+
+### Features
+
+* **meta_field.rb, product_option.rb:** log errors in delete meta-field and create product-option ([15f8bcf](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/15f8bcf73cee2ccec60086adab53470869388d98))
+
+
+
 # [1.9.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.8.0...v1.9.0) (2020-07-15)
 
 
