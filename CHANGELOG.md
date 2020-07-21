@@ -1,3 +1,12 @@
+## [1.10.1](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.10.0...v1.10.1) (2020-07-21)
+
+
+### Bug Fixes
+
+* **bigcommerce_product_agent:** only try to delete something if exists ([7327234](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/7327234b5e330790efc89096b8e46884705e5530))
+
+
+
 # [1.10.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.9.0...v1.10.0) (2020-07-16)
 
 
