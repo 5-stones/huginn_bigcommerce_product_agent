@@ -427,7 +427,9 @@ module Agents
             end
 
             delete_fields.each do |field|
-                @meta_field.delete(field[:resource_id], field[:id])
+                if field[:resource_id] && field[:id]
+                    @meta_field.delete(field[:resource_id], field[:id])
+                end
             end
 
             meta_fields
