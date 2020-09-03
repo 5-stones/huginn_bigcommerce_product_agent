@@ -1,3 +1,12 @@
+# [1.11.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.10.1...v1.11.0) (2020-09-03)
+
+
+### Features
+
+* **variant_mapper:** update msrp on variants ([0ed8245](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/0ed8245d544176ebcc59ac985994ee1e8d99c337))
+
+
+
 ## [1.10.1](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.10.0...v1.10.1) (2020-07-21)
 
 
