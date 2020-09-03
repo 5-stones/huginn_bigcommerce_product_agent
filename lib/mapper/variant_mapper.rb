@@ -9,7 +9,7 @@ module BigcommerceProductAgent
                     price: variant['offers'] && variant['offers'][0] ? variant['offers'][0]['price'] : '0',
                     cost_price: nil,
                     sale_price: nil,
-                    retail_price: nil,
+                    retail_price: variant['offers'] && variant['offers'][0] ? variant['offers'][0]['price'] : nil,
                     weight: variant['weight'] ? variant['weight']['value'] : '0',
                     width: variant['width'] ? variant['width']['value'] : '0',
                     depth: variant['depth'] ? variant['depth']['value'] : '0',
