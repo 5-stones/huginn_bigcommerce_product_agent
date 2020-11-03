@@ -1,3 +1,12 @@
+## [1.11.1](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.11.0...v1.11.1) (2020-11-03)
+
+
+### Bug Fixes
+
+* **product_mapper:** get categories after splitting into dig and phy ([d252e2d](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/d252e2dfae2d4e8b36e9d757a7e440bc3555cb39))
+
+
+
 # [1.11.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.10.1...v1.11.0) (2020-09-03)
 
 
