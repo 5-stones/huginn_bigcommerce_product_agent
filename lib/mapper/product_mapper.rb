@@ -109,6 +109,7 @@ module BigcommerceProductAgent
                     clone = Marshal.load(Marshal.dump(product))
                     clone['model'] = digitals
                     clone['sku'] = clone['model'].select {|m| m['isDefault'] = true}.first['sku']
+                    clone['categories'] = self.get_categories_after_split(clone, clone['categories'])
                     self.merge_additional_properties(clone, field_map)
                     result[:digital] = clone
                 end
@@ -119,6 +120,7 @@ module BigcommerceProductAgent
                     clone = Marshal.load(Marshal.dump(product))
                     clone['model'] = physicals
                     clone['sku'] = clone['model'].select {|m| m['isDefault'] = true}.first['sku']
+                    clone['categories'] = self.get_categories_after_split(clone, clone['categories'])
                     self.merge_additional_properties(clone, field_map)
                     result[:physical] = clone
                 end
@@ -134,6 +136,20 @@ module BigcommerceProductAgent
                 if product['categories']
                     categories = product['categories'].map do |category|
                         category['identifier'].to_i
+                    end
+                end
+
+                return categories
+            end
+
+            def self.get_categories_after_split(product, categories)
+                # categories equal shared categories between digital and physical products
+
+                if product['model'].select { |c| c['categories']}
+                    product['model'].each do |variant|
+                        variant['categories'].map do |category|
+                            categories.push(category)
+                        end
                     end
                 end
 
