@@ -63,7 +63,7 @@ module BigcommerceProductAgent
                 variant = self.get_variant_by_sku(sku, product)
                 payload = self.map(product, variant, additional_data, is_digital, sku)
                 payload[:id] = product_id unless product_id.nil?
-                payload[:sku] = self.get_wrapper_sku(product)
+                payload[:sku] = sku
 
                 return payload
             end
@@ -76,7 +76,9 @@ module BigcommerceProductAgent
                 map = {}
 
                 product['model'].each do |model|
-                    map[model['sku']] = self.get_option(model)
+                    if model['isAvailableForPurchase']
+                      map[model['sku']] = self.get_option(model)
+                    end
                 end
 
                 return map

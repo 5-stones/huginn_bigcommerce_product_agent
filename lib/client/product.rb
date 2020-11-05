@@ -55,6 +55,13 @@ module BigcommerceProductAgent
                 map
             end
 
+            def disable(productId)
+              upsert({ id: productId, is_visible: false })
+            end
+
+            def enable(productId)
+              upsert({ id: productId, is_visible: true })
+            end
         end
     end
 end
