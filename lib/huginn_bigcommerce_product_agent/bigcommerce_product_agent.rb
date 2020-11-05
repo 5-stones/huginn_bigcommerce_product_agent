@@ -100,36 +100,48 @@ module Agents
             end
         end
 
-        # 1. upsert product
-        # 2. upsert option & option_values
-        # 3. delete old option_values
+        # 1. Upsert the core product (Wrapper Product)
+        #     - NOTE: This initial  upsert intentionally disables the product.
+        #       Doing so prevents content hiccups with variants particularly
+        #       for products going off sale.
+        # 2. Upsert option & option_values (BigCommerce Variants)
+        # 3. Delete old option_values
         #     - NOTE: deleting an option_value also deletes the variant
         #       associated with the option_value
-        # 4. upsert variants
+        # 4. Upsert variants
         #     - NOTE: because deleting option values deletes variants
         #       we need to fetch the variants AFTER deletion has occurred.
         #     - NOTE: by deleting variants in #3 if option_values on an
         #       existing variant changes over time, we're effectively deleting
         #       and then re-adding the variant. Could get weird.
+        # 5. Re-enable the updated product
+        #    - NOTE: If the product no longer has any variants, it will remain
+        #      disabled as it can no longer be purchased.
         def handle_variants(event)
             product = event.payload
 
             split = get_mapper(:ProductMapper).split_digital_and_physical(
-              product,
-              interpolated['custom_fields_map']
+                product,
+                interpolated['custom_fields_map']
             )
             physical = split[:physical]
             digital = split[:digital]
 
+            base_sku = product['additionalProperty'].find { |p|
+                p['propertyID'] == 'baseSku'
+            }['value']
+
             wrapper_skus = {
-                physical: get_mapper(:ProductMapper).get_wrapper_sku(physical),
-                digital: get_mapper(:ProductMapper).get_wrapper_sku(digital),
+                # Use the provided base_sku if it exists -- otherwise, infer the SKU from the variant list
+                physical: base_sku ? "#{base_sku}-P" : get_mapper(:ProductMapper).get_wrapper_sku(physical),
+                digital: base_sku ? "#{base_sku}-D" : get_mapper(:ProductMapper).get_wrapper_sku(digital),
             }
 
             bc_products = @product.get_by_skus(
                 wrapper_skus.map {|k,v| v},
                 %w[custom_fields options]
             )
+
             #save skus
             digital_skus = []
             physical_skus = []
@@ -149,15 +161,13 @@ module Agents
                     product['name'] = "#{product['name']} (Digital)"
                 end
 
-                # Ignatius Press -- some products have the same name and must be disambiguated.
-                # ...by adding a list of the product types (hardback, paperback, etc.) to their names
+                # BigCommerce requires that product names be unique. In some cases, (like book titles from multiple sources),
+                # this may be hard to enforce. In those cases, the product SKUs should still be unique, so we append the SKU
+                # to the product title with a `|~` separator. We then set the `page_title` to the original product name so
+                # users don't see system values.
                 if boolify(options['should_disambiguate'])
                     product['page_title'] = product['name']
-                    product['name'] += " |~ " + product['model'].map { |m|
-                       m['additionalProperty'].find { |p|
-                           p['propertyID'] == 'option'
-                       }['value']
-                    }.join(", ")
+                    product['name'] += " |~ " + (is_digital ? wrapper_skus[:digital] : wrapper_skus[:physical])
                 end
 
                 wrapper_sku = wrapper_skus[type]
@@ -166,6 +176,8 @@ module Agents
                 bc_option = !bc_product.nil? ? bc_product['options'].select {|opt| opt['display_name'] === variant_option_name}.first : nil
 
                 search_skus = is_digital ? physical_skus : digital_skus
+
+
                 # ##############################
                 # 1. update wrapper product
                 # ##############################
@@ -204,7 +216,7 @@ module Agents
                 # ##############################
                 variant_skus = get_mapper(:ProductMapper).get_product_skus(product)
                 bc_variants = @product_variant.index(product_id)
-                mapped_variants = product['model'].map do |variant|
+                mapped_variants = product['model'].select { |m| m['isAvailableForPurchase'] }.map do |variant|
                     bc_variant = bc_variants.select {|v| v['sku'] === variant['sku']}.first
                     opt = get_mapper(:ProductMapper).get_option(variant)
                     bc_option_value = bc_option['option_values'].select {|ov| ov['label'] == opt}.first
@@ -221,7 +233,15 @@ module Agents
                     )
                 end
 
-                bc_product['variants'] = @variant.upsert(mapped_variants)
+
+                unless (mapped_variants.blank?)
+                  bc_product['variants'] = @variant.upsert(mapped_variants)
+
+                  # ##############################
+                  # 5. Re-enable the updated product
+                  # ##############################
+                  @product.enable(product_id)
+                end
             end
 
             bc_physical = bc_products[wrapper_skus[:physical]]
@@ -329,6 +349,11 @@ module Agents
             clean_up_modifier_values(modifier_updates[:delete])
             meta_fields = update_meta_fields(meta_fields_upsert, meta_fields_delete)
 
+            if product['is_visible']
+              # If the product should be enabled, re-enable it
+              @product.enable(result[:product]['id'])
+            end
+
             product['meta_fields'] = meta_fields
             product['modifiers'] = modifier_updates[:upsert]
             create_event payload: {
@@ -384,6 +409,12 @@ module Agents
                 },
                 is_digital,
             )
+
+            payload[:is_visible] = false
+            # NOTE:  Products are intentionally upserted as disabled so that users
+            # don't see an incomplete listing (particularly when leveraging variants)
+            # The variant and option_list methods will re-enable products after the
+            # upsert is complete.
 
             bc_product = @product.upsert(payload, {
                 include: %w[custom_fields variants options].join(',')
