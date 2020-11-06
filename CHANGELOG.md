@@ -1,3 +1,12 @@
+# [1.12.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.11.1...v1.12.0) (2020-11-06)
+
+
+### Features
+
+* **bigcommerce_product_agent,product_mapper:** Allow product deletion ([51b65ae](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/51b65aefb6822549c3ebb1011f1fc26e9f0a662e))
+
+
+
 ## [1.11.1](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.11.0...v1.11.1) (2020-11-03)
 
 
