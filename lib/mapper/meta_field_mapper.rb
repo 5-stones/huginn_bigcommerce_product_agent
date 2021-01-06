@@ -2,7 +2,7 @@ module BigcommerceProductAgent
     module Mapper
         class MetaFieldMapper
 
-            def self.map(field_map, product, bc_product, meta_fields, namespace)
+            def self.map(field_map, raw_product, bc_product, current_meta_fields, namespace)
                 fields = {
                     upsert: [],
                     delete: [],
@@ -11,8 +11,8 @@ module BigcommerceProductAgent
                 existing_fields = {}
 
                 if bc_product
-                    meta_fields.each do |mf|
-
+                    current_meta_fields.each do |mf|
+                        mf['resource_id'] = bc_product['id']
                         unless mf['namespace'] != namespace
                           # Only delete meta fields managed by this sync
                           existing_fields[mf['key'].to_s] = mf
@@ -22,7 +22,7 @@ module BigcommerceProductAgent
 
                 if field_map && field_map['additionalProperty']
                     field_map['additionalProperty'].each do |key, val|
-                        field = self.from_additional_property(product, existing_fields, key, val, namespace, bc_product)
+                        field = self.from_additional_property(raw_product, existing_fields, key, val, namespace, bc_product)
                         fields[:upsert].push(field) unless field.nil?
                     end
                 end
@@ -33,7 +33,7 @@ module BigcommerceProductAgent
                             next
                         end
 
-                        field = self.from_property(product, existing_fields, key, val, namespace, bc_product)
+                        field = self.from_property(raw_product, existing_fields, key, val, namespace, bc_product)
                         fields[:upsert].push(field) unless field.nil?
                     end
                 end
@@ -45,15 +45,15 @@ module BigcommerceProductAgent
 
             private
 
-            def self.from_property(product, existing_fields, from_key, to_key, namespace, bc_product)
+            def self.from_property(raw_product, existing_fields, from_key, to_key, namespace, bc_product)
 
-                if !product[from_key].nil?
+                if !raw_product[from_key].nil?
                     field = {
                         namespace: namespace,
                         permission_set: 'write',
                         resource_type: 'product',
                         key: to_key,
-                        value: product[from_key]
+                        value: raw_product[from_key]
                     }
 
                     if bc_product
@@ -69,9 +69,9 @@ module BigcommerceProductAgent
                 end
             end
 
-            def self.from_additional_property(product, existing_fields, from_key, to_key, namespace, bc_product)
+            def self.from_additional_property(raw_product, existing_fields, from_key, to_key, namespace, bc_product)
 
-                item = product['additionalProperty'].select {|p| p['propertyID'] == from_key}.first
+                item = raw_product['additionalProperty'].select {|p| p['propertyID'] == from_key}.first
                 if !item.nil?
 
                     field = {
