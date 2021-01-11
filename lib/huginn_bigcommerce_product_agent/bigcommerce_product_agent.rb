@@ -168,7 +168,12 @@ module Agents
             acumen_data: acumen_product
           }
 
-        rescue
+        rescue => e
+          create_event payload: {
+            status: 500,
+            message: e.message(),
+            acumen_product: acumen_product,
+          }
           # TODO emit an error event here:
           # {
           #   status: 404 | 500
@@ -178,6 +183,7 @@ module Agents
           # We will need error reporting added for this payload with a trigger agent,
           # consolidation agent, and a reporting agent look at existing error reporting
           # for guidance
+
         end
 
       end
@@ -198,7 +204,17 @@ module Agents
           end
 
           # TODO Emit each item in the `results` array as an event payload and _add_ a `status` key with a value of 200
-        rescue
+
+          create_event payload: {
+            product: data,
+            status: 200
+          }
+        rescue => e
+          create_event payload: {
+            status: 500,
+            message: e.message(),
+            acumen_product: acumen_product,
+          }
           # TODO emit an error event here:
           # {
           #   status: 404 | 500
