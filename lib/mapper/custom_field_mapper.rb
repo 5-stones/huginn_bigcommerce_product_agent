@@ -2,7 +2,7 @@ module BigcommerceProductAgent
     module Mapper
         class CustomFieldMapper
 
-            def self.map(field_map, product, bc_product)
+            def self.map(field_map, acumen_product, bc_product)
                 fields = {
                     upsert: [],
                     delete: [],
@@ -19,7 +19,7 @@ module BigcommerceProductAgent
 
                 if field_map && field_map['additionalProperty']
                     field_map['additionalProperty'].each do |key, val|
-                        field = self.from_additional_property(product, existing_fields, key, val)
+                        field = self.from_additional_property(acumen_product, existing_fields, key, val)
                         fields[:upsert].push(field) unless field.nil?
                     end
                 end
@@ -30,7 +30,7 @@ module BigcommerceProductAgent
                             next
                         end
 
-                        field = self.from_property(product, existing_fields, key, val)
+                        field = self.from_property(acumen_product, existing_fields, key, val)
                         fields[:upsert].push(field) unless field.nil?
                     end
                 end
@@ -57,11 +57,11 @@ module BigcommerceProductAgent
 
             private
 
-            def self.from_property(product, existing_fields, from_key, to_key)
-                if !product[from_key].nil?
+            def self.from_property(acumen_product, existing_fields, from_key, to_key)
+                if !acumen_product[from_key].nil?
                     field = {
                         name: to_key,
-                        value: product[from_key].to_s
+                        value: acumen_product[from_key].to_s
                     }
 
                     if existing_fields[to_key]
@@ -73,9 +73,9 @@ module BigcommerceProductAgent
                 end
             end
 
-            def self.from_additional_property(product, existing_fields, from_key, to_key)
+            def self.from_additional_property(acumen_product, existing_fields, from_key, to_key)
                 # date published
-                item = product['additionalProperty'].select {|p| p['propertyID'] == from_key}.first
+                item = acumen_product['additionalProperty'].select {|p| p['propertyID'] == from_key}.first
                 if !item.nil?
                     field = {
                         name: to_key,

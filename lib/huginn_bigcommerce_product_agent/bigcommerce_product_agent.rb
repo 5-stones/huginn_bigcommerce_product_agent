@@ -157,8 +157,8 @@ module Agents
 
           # Process product updates
           bc_product = upsert_product(acumen_product, bc_product)
-          custom_fields = upsert_custom_fields(acumen_product, bc_product)
-          meta_fields = upsert_meta_fields(acumen_product, bc_product)
+          custom_fields = update_fields(acumen_product, bc_product, get_mapper(:CustomFieldMapper), options['custom_fields_map'], @custom_field_client)
+          meta_fields = update_fields(acumen_product, bc_product, get_mapper(:MetaFieldMapper), options['meta_fields_map'], @meta_field_client)
 
           # This will be emitted later as an event
           results[bc_product['sku']] = {
@@ -169,11 +169,6 @@ module Agents
           }
 
         rescue => e
-          create_event payload: {
-            status: 500,
-            message: e.message(),
-            acumen_product: acumen_product,
-          }
           # TODO emit an error event here:
           # {
           #   status: 404 | 500
@@ -183,6 +178,11 @@ module Agents
           # We will need error reporting added for this payload with a trigger agent,
           # consolidation agent, and a reporting agent look at existing error reporting
           # for guidance
+          create_event payload: {
+            status: 500,
+            message: e.message(),
+            acumen_product: acumen_product,
+          }
 
         end
 
@@ -210,11 +210,6 @@ module Agents
             status: 200
           }
         rescue => e
-          create_event payload: {
-            status: 500,
-            message: e.message(),
-            acumen_product: acumen_product,
-          }
           # TODO emit an error event here:
           # {
           #   status: 404 | 500
@@ -224,6 +219,11 @@ module Agents
           # We will need error reporting added for this payload with a trigger agent,
           # consolidation agent, and a reporting agent look at existing error reporting
           # for guidance
+          create_event payload: {
+            status: 500,
+            message: e.message(),
+            acumen_product: acumen_product,
+          }
         end
       end
     end
@@ -241,7 +241,7 @@ module Agents
 
       name = acumen_product['name']
 
-      if is_digital
+      if payload['type'] == 'digital'
         payload['name'] += ' (Digital)'
       end
 
@@ -259,33 +259,32 @@ module Agents
       return bc_product ? @product_client.upsert(bc_product['id'], payload) : @product_client.create(payload)
     end
 
-    # Manages the custom fields for the product. Since we don't maintain a _link_ between the
-    # Custom Fields in BigCommerce and their associated data in Acumen, we don't have a very
+    # Manages the custom/meta fields for the product. Since we don't maintain a _link_ between the
+    # Custom/Meta Fields in BigCommerce and their associated data in Acumen, we don't have a very
     # reliable way to fetch/update individual fields.
     #
     # Instead, this function fetches _all_ the product fields, and we use the field name to map
     # them to the correct Acumen data.
     #
-    # Additionally, BigCommerce does not allow _blank_ values in Custom Fields, so if field data
+    # Additionally, BigCommerce does not allow _blank_ values in Custom/Meta Fields, so if field data
     # is removed from Acumen, then we'll need to _delete_ the associated field in BigCommerce.
     #
     # It is also important to note that this function _will not_ set `related_product_ids`. That
     # field is managed by a separate function.
-    def upsert_custom_fields(acumen_product, bc_product)
+    def update_fields(acumen_product, bc_product, mapper, map, client)
+      fields = mapper.map(map, acumen_product, bc_product)
 
-    end
+      # Delete fields
+      fields[:delete].each do |field|
+          client.delete(field['product_id'], field['id'])
+      end
 
-    # Manages the meta fields for the product. Since we don't maintain a _link_ between the
-    # Custom Fields in BigCommerce and their associated data in Acumen, we don't have a very
-    # reliable way to fetch/update individual fields.
-    #
-    # Instead, this function fetches _all_ the product fields, and we use the field name to map
-    # them to the correct Acumen data.
-    #
-    # Additionally, BigCommerce does not allow _blank_ values in Meta Fields, so if field data
-    # is removed from Acumen, then we'll need to _delete_ the associated field in BigCommerce.
-    def upsert_meta_fields(acumen_product, bc_product)
+      # Upsert fields
+      fields[:upsert].each do |field|
+          client.upsert(field['product_id'], field['id'])
+      end
 
+      return fields
     end
 
     # This function manages the `related_product_ids` field which is used to link
@@ -306,6 +305,20 @@ module Agents
       #
       # Additionally, the custom_fields key in the hash should be _updated_ to include the
       # related_product_ids field. And the updated hash should be returned.
+
+      product_ids = []
+
+      product_date.each do |product_hash|
+        product_ids.push(product_hash['bc_product']['id'])
+      end
+
+      product_date.each do |product_hash|
+        product_ids.delete(product_hash['bc_product']['id'])
+        product_hash['custom_fields']['related_product_ids'] = product_ids * ','
+        product_ids.push(product_hash['bc_product']['id'])
+      end
+
+      return product_data
     end
 
     private

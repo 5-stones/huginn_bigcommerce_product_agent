@@ -10,30 +10,30 @@ module BigcommerceProductAgent
               return response.body['data']
             end
 
-            def create(meta_field)
+            def create(product_id, meta_field)
               response = client.post(
-                uri(product_id: meta_field[:resource_id]),
+                uri(product_id: product_id),
                 meta_field.to_json
               )
 
               return response.body['data']
             end
 
-            def update(meta_field)
+            def update(product_id, meta_field)
               response = client.put(
-                uri(product_id: meta_field[:resource_id], meta_field_id: meta_field[:id]),
+                uri(product_id: product_id, meta_field_id: meta_field[:id]),
                 meta_field.to_json
               )
 
               return response.body['data']
             end
 
-            def upsert(meta_field)
+            def upsert(product_id, meta_field)
               begin
                 if meta_field[:id]
-                  return update(meta_field)
+                  return update(product_id, meta_field)
                 else
-                  return create(meta_field)
+                  return create(product_id, meta_field)
                 end
               rescue Faraday::Error::ClientError => e
                 puts e.inspect
