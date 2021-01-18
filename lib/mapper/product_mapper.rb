@@ -2,7 +2,7 @@ module BigcommerceProductAgent
     module Mapper
         class ProductMapper
 
-            def self.map_payload(product, additional_data = {}, is_digital = false, default_sku='')
+            def self.map_payload(product, additional_data = {}, default_sku='')
                 name = product['name']
 
                 result = {
@@ -23,7 +23,7 @@ module BigcommerceProductAgent
                   price: product['offers'] && product['offers'][0] ? product['offers'][0]['price'] : '0',
                   search_keywords: self.get_search_keywords(additional_data.delete(:additional_search_terms), product),
                   sku: product ? product['sku'] : default_sku,
-                  type: product['isDigital'] == is_digital ? 'digital' : 'physical',
+                  type: product['isDigital'].to_s == 'true' ? 'digital' : 'physical',
                   weight: product['weight'] ? product['weight']['value'] : '0',
                   width: product['width'] ? product['width']['value'] : '0',
                 }
