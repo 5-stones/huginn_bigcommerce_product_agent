@@ -138,24 +138,24 @@ module Agents
     end
 
     def handle(event)
-      acumen_products = event.payload
+      raw_products = event.payload
       results = []
 
-      # Loop through the provided acumen_products and perform the upsert
+      # Loop through the provided raw_products and perform the upsert
       # This process will upsert the core product record and the custom/meta
       # fields from the Acumen data.
       additional_data = {
         additional_search_terms: [],
       }
 
-      acumen_products['products'].each do |acumen_product|
-        additional_data[:additional_search_terms].push(acumen_product['sku'])
+      raw_products['products'].each do |raw_product|
+        additional_data[:additional_search_terms].push(raw_product['sku'])
       end
 
-      acumen_products['products'].each do |acumen_product|
+      raw_products['products'].each do |raw_product|
 
         begin
-          bc_product = @product_client.get_by_sku(acumen_product['sku'])
+          bc_product = @product_client.get_by_sku(raw_product['sku'])
 
           if (bc_product)
             # Disable the product as we process the upsert to ensure users don't see incorrect data
@@ -163,16 +163,16 @@ module Agents
           end
 
           # Process product updates
-          bc_product = upsert_product(acumen_product, bc_product, additional_data)
-          custom_fields = update_fields(acumen_product, bc_product, get_mapper(:CustomFieldMapper), options['custom_fields_map'], @custom_field_client)
-          meta_fields = update_fields(acumen_product, bc_product, get_mapper(:MetaFieldMapper), options['meta_fields_map'], @meta_field_client)
+          bc_product = upsert_product(raw_product, bc_product, additional_data)
+          custom_fields = update_fields(raw_product, bc_product, get_mapper(:CustomFieldMapper), options['custom_fields_map'], @custom_field_client)
+          meta_fields = update_fields(raw_product, bc_product, get_mapper(:MetaFieldMapper), options['meta_fields_map'], @meta_field_client)
 
           # This will be emitted later as an event
           results.push({
             bc_product: bc_product,
             custom_fields: custom_fields,
             meta_fields: meta_fields,
-            acumen_data: acumen_product
+            acumen_data: raw_product
           })
 
         rescue => e
@@ -180,7 +180,7 @@ module Agents
           # {
           #   status: 404 | 500
           #   message:
-          #   acumen_product:
+          #   raw_product:
           # }
           # We will need error reporting added for this payload with a trigger agent,
           # consolidation agent, and a reporting agent look at existing error reporting
@@ -189,7 +189,7 @@ module Agents
             status: 500,
             message: e.message(),
             trace: e.backtrace.join('\n'),
-            acumen_product: acumen_product,
+            raw_product: raw_product,
           }
 
         end
@@ -205,8 +205,8 @@ module Agents
       # that sets the related_product_ids field
       results.each do |data|
         begin
-          acumen_product = data[:acumen_data]
-          if (acumen_product['isAvailableForPurchase'])
+          raw_product = data[:acumen_data]
+          if (raw_product['isAvailableForPurchase'])
             # Following all updates, if the product is available for purchase
             @product_client.enable(data[:bc_product]['id'])
           end
@@ -223,7 +223,7 @@ module Agents
           #   status: 404 | 500
           #   message:
           #   trace:
-          #   acumen_product:
+          #   raw_product:
           # }
           # We will need error reporting added for this payload with a trigger agent,
           # consolidation agent, and a reporting agent look at existing error reporting
@@ -232,7 +232,7 @@ module Agents
             status: 500,
             message: e.message(),
             trace: e.backtrace.join('\n'),
-            acumen_product: acumen_product,
+            raw_product: raw_product,
           }
         end
       end
@@ -244,10 +244,10 @@ module Agents
     # The bc_product passed in may be null if the product does not exist yet in BigCommerce.
     # If provided, bc_product['id'] will be used to upsert new data to an existing product.
     # Otherwise a new record will be created.
-    def upsert_product(acumen_product, bc_product, additional_data)
+    def upsert_product(raw_product, bc_product, additional_data)
 
       # TODO format the payload based on the BigCommerce product API (v3)
-      payload = get_mapper(:ProductMapper).map_payload(acumen_product, additional_data)
+      payload = get_mapper(:ProductMapper).map_payload(raw_product, additional_data)
 
       if payload[:type] == 'digital'
         payload[:name].concat(' (Digital)')
@@ -261,7 +261,7 @@ module Agents
       # page_title is the user-facing display value for product pages.
       if boolify(options['should_disambiguate'])
          payload[:page_title] = payload[:name]
-         payload[:name].concat(" |~ " + acumen_product['sku'])
+         payload[:name].concat(" |~ " + raw_product['sku'])
       end
 
       if bc_product
@@ -284,9 +284,9 @@ module Agents
     #
     # It is also important to note that this function _will not_ set `related_product_ids`. That
     # field is managed by a separate function.
-    def update_fields(acumen_product, bc_product, mapper, map, client)
+    def update_fields(raw_product, bc_product, mapper, map, client)
       current_fields = client.get_for_product(bc_product['id'])
-      fields = mapper.map(map, acumen_product, bc_product, current_fields, options['meta_fields_namespace'])
+      fields = mapper.map(map, raw_product, bc_product, current_fields, options['meta_fields_namespace'])
 
       # Delete fields
       fields[:delete].each do |field|
