@@ -3,6 +3,13 @@ module BigcommerceProductAgent
         class CustomField < AbstractClient
             @uri_base = 'catalog/products/:product_id/custom-fields/:custom_field_id'
 
+            def get_for_product(product_id)
+              return [] if product_id.blank?
+
+              response = client.get(uri(product_id: product_id))
+              return response.body['data']
+            end
+
             def create(product_id, payload)
                 response = client.post(uri(product_id: product_id), payload.to_json)
                 return response.body['data']

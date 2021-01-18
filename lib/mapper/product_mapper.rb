@@ -23,7 +23,7 @@ module BigcommerceProductAgent
                   price: product['offers'] && product['offers'][0] ? product['offers'][0]['price'] : '0',
                   search_keywords: self.get_search_keywords(additional_data.delete(:additional_search_terms), product),
                   sku: product ? product['sku'] : default_sku,
-                  type: product['isDigital'] == true || is_digital ? 'digital' : 'physical',
+                  type: product['isDigital'] == is_digital ? 'digital' : 'physical',
                   weight: product['weight'] ? product['weight']['value'] : '0',
                   width: product['width'] ? product['width']['value'] : '0',
                 }
@@ -71,7 +71,12 @@ module BigcommerceProductAgent
 
             # get a list of search keywords for the products
             def self.get_search_keywords(additional_search_terms, product)
-                return (self.meta_keywords(product) + additional_search_terms.split(",")).join(",")
+              search_keywords = self.meta_keywords(product)
+              if (additional_search_terms && !additional_search_terms.empty?)
+                search_keywords.concat(additional_search_terms)
+              end
+
+              return search_keywords.uniq.join(",")
             end
 
             def self.get_availability(product)

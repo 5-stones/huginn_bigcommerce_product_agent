@@ -33,26 +33,21 @@ module BigcommerceProductAgent
             end
 
             def upsert(payload, params={})
-                if payload[:id]
-                    return update(payload[:id], payload, params)
+                payload['id'] = payload.delete(:id) unless payload[:id].nil?
+                if payload['id']
+                    return update(payload['id'], payload, params)
                 else
                     return create(payload, params)
                 end
             end
 
-            def get_by_skus(skus, include = %w[custom_fields modifiers])
-                products = index({
-                    'sku:in': skus.join(','),
+            def get_by_sku(sku, include = %w[custom_fields modifiers])
+                product = index({
+                    'sku': sku,
                     include: include.join(','),
                 })
 
-                map = {}
-
-                products.each do |product|
-                    map[product['sku']] = product
-                end
-
-                map
+                return product[0]
             end
 
             def disable(productId)

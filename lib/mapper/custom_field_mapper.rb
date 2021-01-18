@@ -2,7 +2,7 @@ module BigcommerceProductAgent
     module Mapper
         class CustomFieldMapper
 
-            def self.map(field_map, acumen_product, bc_product)
+            def self.map(field_map, acumen_product, bc_product, current_custom_fields, namespace)
                 fields = {
                     upsert: [],
                     delete: [],
@@ -10,8 +10,8 @@ module BigcommerceProductAgent
 
                 existing_fields = {}
 
-                if bc_product
-                    bc_product['custom_fields'].each do |cf|
+                if bc_product && current_custom_fields
+                    current_custom_fields.each do |cf|
                         cf['product_id'] = bc_product['id']
                         existing_fields[cf['name'].to_s] = cf
                     end
@@ -20,7 +20,10 @@ module BigcommerceProductAgent
                 if field_map && field_map['additionalProperty']
                     field_map['additionalProperty'].each do |key, val|
                         field = self.from_additional_property(acumen_product, existing_fields, key, val)
-                        fields[:upsert].push(field) unless field.nil?
+                        if field
+                          field['product_id'] = bc_product['id']
+                          fields[:upsert].push(field)
+                        end
                     end
                 end
 
@@ -31,7 +34,10 @@ module BigcommerceProductAgent
                         end
 
                         field = self.from_property(acumen_product, existing_fields, key, val)
-                        fields[:upsert].push(field) unless field.nil?
+                        if field
+                          field['product_id'] = bc_product['id']
+                          fields[:upsert].push(field)
+                        end
                     end
                 end
 

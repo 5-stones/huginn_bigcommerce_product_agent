@@ -29,8 +29,9 @@ module BigcommerceProductAgent
             end
 
             def upsert(product_id, meta_field)
+              meta_field['id'] = meta_field.delete(:id) unless meta_field[:id].nil?
               begin
-                if meta_field[:id]
+                if meta_field['id']
                   return update(product_id, meta_field)
                 else
                   return create(product_id, meta_field)

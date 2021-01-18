@@ -2,7 +2,7 @@ module BigcommerceProductAgent
     module Mapper
         class MetaFieldMapper
 
-            def self.map(field_map, acumen_product, bc_product, meta_fields, namespace)
+            def self.map(field_map, acumen_product, bc_product, current_meta_fields, namespace)
                 fields = {
                     upsert: [],
                     delete: [],
@@ -11,7 +11,7 @@ module BigcommerceProductAgent
                 existing_fields = {}
 
                 if bc_product
-                    meta_fields.each do |mf|
+                    current_meta_fields.each do |mf|
                       mf['product_id'] = bc_product['id']
                         unless mf['namespace'] != namespace
                           # Only delete meta fields managed by this sync
