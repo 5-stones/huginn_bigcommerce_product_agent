@@ -12,7 +12,7 @@ module BigcommerceProductAgent
 
                 if bc_product
                     current_meta_fields.each do |mf|
-                      mf['product_id'] = bc_product['id']
+                        mf['resource_id'] = bc_product['id']
                         unless mf['namespace'] != namespace
                           # Only delete meta fields managed by this sync
                           existing_fields[mf['key'].to_s] = mf
@@ -51,7 +51,7 @@ module BigcommerceProductAgent
                     field = {
                         namespace: namespace,
                         permission_set: 'write',
-                        resource_type: 'raw_product',
+                        resource_type: 'product',
                         key: to_key,
                         value: raw_product[from_key]
                     }
@@ -77,7 +77,7 @@ module BigcommerceProductAgent
                     field = {
                         namespace: namespace,
                         permission_set: 'write',
-                        resource_type: 'raw_product',
+                        resource_type: 'product',
                         key: to_key,
                         value: item['value']
                     }

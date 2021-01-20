@@ -162,10 +162,6 @@ module Agents
             # Only process updates if the existing product has been disabled
             bc_product = upsert_product(raw_product, bc_product, additional_data)
 
-            Rails.logger.info("BC PRODUCT IS:   ------------------------------------------------------------")
-                Rails.logger.info(bc_product)
-            Rails.logger.info("-----------------------------------------------------------------------------")
-
             custom_fields = update_fields(raw_product, bc_product, get_mapper(:CustomFieldMapper), options['custom_fields_map'], @custom_field_client)
             meta_fields = update_fields(raw_product, bc_product, get_mapper(:MetaFieldMapper), options['meta_fields_map'], @meta_field_client)
 
@@ -349,16 +345,17 @@ module Agents
 
       begin
         current_fields = client.get_for_product(bc_product['id'])
+
         fields = mapper.map(map, raw_product, bc_product, current_fields, options['meta_fields_namespace'])
 
         # Delete fields
         fields[:delete].each do |field|
-            client.delete(field['product_id'], field['id'])
+            client.delete(bc_product['id'], field['id'])
         end
 
         # Upsert fields
         fields[:upsert].each do |field|
-            client.upsert(field['product_id'], field)
+            client.upsert(bc_product['id'], field)
         end
 
         return fields
