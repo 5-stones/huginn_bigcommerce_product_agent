@@ -304,7 +304,7 @@ module Agents
         # page_title is the user-facing display value for product pages.
         if boolify(options['should_disambiguate'])
            payload[:page_title] = payload[:name]
-           payload[:name].concat(" |~ " + raw_product['sku'])
+           payload[:name] = payload[:name] + " |~ " + raw_product['sku']
         end
 
         if bc_product
