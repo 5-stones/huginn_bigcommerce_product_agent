@@ -154,46 +154,32 @@ module Agents
 
       raw_products['products'].each do |raw_product|
 
-        begin
-          bc_product = @product_client.get_by_sku(raw_product['sku'])
+        bc_product = lookup_existing_product(raw_product)
 
-          if (bc_product)
-            # Disable the product as we process the upsert to ensure users don't see incorrect data
-            @product_client.disable(bc_product['id'])
+        if (disable_existing_product(bc_product))
+
+          begin
+            # Only process updates if the existing product has been disabled
+            bc_product = upsert_product(raw_product, bc_product, additional_data)
+
+            custom_fields = update_fields(raw_product, bc_product, get_mapper(:CustomFieldMapper), options['custom_fields_map'], @custom_field_client)
+            meta_fields = update_fields(raw_product, bc_product, get_mapper(:MetaFieldMapper), options['meta_fields_map'], @meta_field_client)
+
+            # This will be emitted later as an event
+            results.push({
+              bc_product: bc_product,
+              custom_fields: custom_fields,
+              meta_fields: meta_fields,
+              acumen_data: raw_product
+            })
+
+          rescue => e
+            log({ raw_product: raw_product, bc_product: bc_product, error: e })
+            # Log the error and move on. Any errors caught here have already been handled and reported as error events.
+            # We are swallowing this exception because a failure with one product should not block the upsert of another.
           end
 
-          # Process product updates
-          bc_product = upsert_product(raw_product, bc_product, additional_data)
-          custom_fields = update_fields(raw_product, bc_product, get_mapper(:CustomFieldMapper), options['custom_fields_map'], @custom_field_client)
-          meta_fields = update_fields(raw_product, bc_product, get_mapper(:MetaFieldMapper), options['meta_fields_map'], @meta_field_client)
-
-          # This will be emitted later as an event
-          results.push({
-            bc_product: bc_product,
-            custom_fields: custom_fields,
-            meta_fields: meta_fields,
-            acumen_data: raw_product
-          })
-
-        rescue => e
-          # TODO emit an error event here:
-          # {
-          #   status: 404 | 500
-          #   message:
-          #   raw_product:
-          # }
-          # We will need error reporting added for this payload with a trigger agent,
-          # consolidation agent, and a reporting agent look at existing error reporting
-          # for guidance
-          create_event payload: {
-            status: 500,
-            message: e.message(),
-            trace: e.backtrace.join('\n'),
-            raw_product: raw_product,
-          }
-
         end
-
       end
 
       results = set_related_product_ids(results)
@@ -208,7 +194,7 @@ module Agents
           raw_product = data[:acumen_data]
           if (raw_product['isAvailableForPurchase'])
             # Following all updates, if the product is available for purchase
-            @product_client.enable(data[:bc_product]['id'])
+            enable_updated_product(data[:bc_product])
           end
 
           # TODO Emit each item in the `results` array as an event payload and _add_ a `status` key with a value of 200
@@ -218,25 +204,82 @@ module Agents
             status: 200
           }
         rescue => e
-          # TODO emit an error event here:
-          # {
-          #   status: 404 | 500
-          #   message:
-          #   trace:
-          #   raw_product:
-          # }
-          # We will need error reporting added for this payload with a trigger agent,
-          # consolidation agent, and a reporting agent look at existing error reporting
-          # for guidance
           create_event payload: {
             status: 500,
+            scope: 'enable_updated_product',
             message: e.message(),
             trace: e.backtrace.join('\n'),
-            raw_product: raw_product,
+            product_data: data,
           }
         end
       end
     end
+
+    # Attempt to find an existing BigCommerce product by SKU
+    # Returns nil if no matching product is found.
+    def lookup_existing_product(raw_product)
+      begin
+        bc_product = @product_client.get_by_sku(raw_product['sku'])
+      rescue => e
+        create_event payload: {
+          status: 500,
+          scope: 'lookup_existing_product',
+          message: e.message,
+          trace: e.backtrace.join('\n'),
+          raw_product: raw_product,
+        }
+
+        # Rethrow the exception
+        raise e
+      end
+    end
+
+    # If the product already exists in BigCommerce, disable it before processing
+    # any updates. Returns true if the product was successfully disabled
+    def disable_existing_product(bc_product)
+
+      if (bc_product.nil?)
+        # If no product exists yet, there is nothing to disable. Return a successful response
+        return true
+      end
+
+      begin
+        # Disable the product as we process the upsert to ensure users don't see incorrect data
+        @product_client.disable(bc_product['id'])
+        return true
+
+      rescue => e
+        create_event payload: {
+          status: 500,
+          scope: 'disable_existing_product',
+          message: e.message,
+          trace: e.backtrace.join('\n'),
+          bc_product_id: id,
+        }
+
+        return false
+      end
+    end
+
+    # Fires after updates have been processed and re-enables the product
+    def enable_updated_product(bc_product)
+      begin
+        @product_client.enable(bc_product['id'])
+        return true
+
+      rescue => e
+        create_event payload: {
+          status: 500,
+          scope: 'enable_existing_product',
+          message: e.message,
+          trace: e.backtrace.join('\n'),
+          bc_product_id: id,
+        }
+
+        return false
+      end
+    end
+
 
     # Upsert the core product record in BigCommerce This handles all fields stored
     # directly on the BigCommerce product object: name, sku, price, etc.
@@ -246,30 +289,44 @@ module Agents
     # Otherwise a new record will be created.
     def upsert_product(raw_product, bc_product, additional_data)
 
-      # TODO format the payload based on the BigCommerce product API (v3)
-      payload = get_mapper(:ProductMapper).map_payload(raw_product, additional_data)
+      begin
+        # TODO format the payload based on the BigCommerce product API (v3)
+        payload = get_mapper(:ProductMapper).map_payload(raw_product, additional_data)
 
-      if payload[:type] == 'digital'
-        payload[:name].concat(' (Digital)')
+        if payload[:type] == 'digital'
+          payload[:name].concat(' (Digital)')
+        end
+
+        # BigCommerce requires that product names be unique. In some cases, (like book titles from multiple sources),
+        # this may be hard to enforce. In those cases, the product SKUs should still be unique, so we append the SKU
+        # to the product title with a `|~` separator. We then set the `page_title` to the original product name so
+        # users don't see system values.
+        #
+        # page_title is the user-facing display value for product pages.
+        if boolify(options['should_disambiguate'])
+           payload[:page_title] = payload[:name]
+           payload[:name].concat(" |~ " + raw_product['sku'])
+        end
+
+        if bc_product
+          payload[:id] = bc_product['id']
+        end
+
+
+        return @product_client.upsert(payload)
+      rescue => e
+
+        create_event payload: {
+          status: 500,
+          scope: 'upsert_product',
+          message: e.message(),
+          trace: e.backtrace.join('\n'),
+          product_payload: payload,
+        }
+
+        # Rethrow the initial exception
+        raise e
       end
-
-      # BigCommerce requires that product names be unique. In some cases, (like book titles from multiple sources),
-      # this may be hard to enforce. In those cases, the product SKUs should still be unique, so we append the SKU
-      # to the product title with a `|~` separator. We then set the `page_title` to the original product name so
-      # users don't see system values.
-      #
-      # page_title is the user-facing display value for product pages.
-      if boolify(options['should_disambiguate'])
-         payload[:page_title] = payload[:name]
-         payload[:name].concat(" |~ " + raw_product['sku'])
-      end
-
-      if bc_product
-        payload[:id] = bc_product['id']
-      end
-
-
-      return @product_client.upsert(payload)
     end
 
     # Manages the custom/meta fields for the product. Since we don't maintain a _link_ between the
@@ -285,20 +342,40 @@ module Agents
     # It is also important to note that this function _will not_ set `related_product_ids`. That
     # field is managed by a separate function.
     def update_fields(raw_product, bc_product, mapper, map, client)
-      current_fields = client.get_for_product(bc_product['id'])
-      fields = mapper.map(map, raw_product, bc_product, current_fields, options['meta_fields_namespace'])
 
-      # Delete fields
-      fields[:delete].each do |field|
-          client.delete(field['product_id'], field['id'])
+      begin
+        current_fields = client.get_for_product(bc_product['id'])
+
+        fields = mapper.map(map, raw_product, bc_product, current_fields, options['meta_fields_namespace'])
+
+        # Delete fields
+        fields[:delete].each do |field|
+            client.delete(bc_product['id'], field['id'])
+        end
+
+        # Upsert fields
+        fields[:upsert].each do |field|
+            client.upsert(bc_product['id'], field)
+        end
+
+        return fields
+      rescue => e
+
+        create_event payload: {
+          status: 500,
+          scope: 'update_fields',
+          field_mapper: mapper,
+          message: e.message(),
+          trace: e.backtrace.join('\n'),
+          field_map: map,
+          raw_product: raw_product,
+          bc_product: bc_product,
+          current_fields: current_fields,
+        }
+
+        # Rethrow the initial exception
+        raise e
       end
-
-      # Upsert fields
-      fields[:upsert].each do |field|
-          client.upsert(field['product_id'], field)
-      end
-
-      return fields
     end
 
     # This function manages the `related_product_ids` field which is used to link
@@ -320,6 +397,8 @@ module Agents
       # Additionally, the custom_fields key in the hash should be _updated_ to include the
       # related_product_ids field. And the updated hash should be returned.
 
+      begin
+
       product_ids = []
 
       product_data.each do |product_hash|
@@ -333,6 +412,15 @@ module Agents
       end
 
       return product_data
+    rescue => e
+      create_event payload: {
+        status: 500,
+        scope: 'set_related_product_ids',
+        message: e.message(),
+        trace: e.backtrace.join('\n'),
+        data: product_data,
+      }
+    end
     end
 
     private
