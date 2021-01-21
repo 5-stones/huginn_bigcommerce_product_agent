@@ -21,7 +21,7 @@ module BigcommerceProductAgent
 
             def update(product_id, meta_field)
               response = client.put(
-                uri(product_id: product_id, meta_field_id: meta_field[:id]),
+                uri(product_id: product_id, meta_field_id: meta_field['id']),
                 meta_field.to_json
               )
 
