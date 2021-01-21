@@ -12,7 +12,7 @@ module BigcommerceProductAgent
                     raise e, "\n#{e.message}\nFailed to update product with payload = #{payload.to_json}\n", e.backtrace
                 end
 
-                return response.body['data']
+                return get_by_sku(payload[:sku])
             end
 
             def delete(id)
@@ -29,7 +29,7 @@ module BigcommerceProductAgent
                     raise e, "\n#{e.message}\nFailed to create product with payload = #{payload.to_json}\n", e.backtrace
                 end
 
-                return response.body['data']
+                return get_by_sku(payload[:sku])
             end
 
             def upsert(payload, params={})

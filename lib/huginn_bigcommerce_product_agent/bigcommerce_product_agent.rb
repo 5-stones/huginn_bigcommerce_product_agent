@@ -161,7 +161,6 @@ module Agents
           begin
             # Only process updates if the existing product has been disabled
             bc_product = upsert_product(raw_product, bc_product, additional_data)
-
             custom_fields = update_fields(raw_product, bc_product, get_mapper(:CustomFieldMapper), options['custom_fields_map'], @custom_field_client)
             meta_fields = update_fields(raw_product, bc_product, get_mapper(:MetaFieldMapper), options['meta_fields_map'], @meta_field_client)
 
@@ -342,6 +341,8 @@ module Agents
     # It is also important to note that this function _will not_ set `related_product_ids`. That
     # field is managed by a separate function.
     def update_fields(raw_product, bc_product, mapper, map, client)
+      current_fields = client.get_for_product(bc_product['id'])
+      fields = mapper.map(map, raw_product, bc_product, current_fields, options['meta_fields_namespace'])
 
       begin
         current_fields = client.get_for_product(bc_product['id'])
@@ -407,20 +408,31 @@ module Agents
 
       product_data.each do |product_hash|
         product_ids.delete(product_hash[:bc_product]['id'])
-        product_hash[:custom_fields]['related_product_ids'] = product_ids * ','
+
+        field = {
+          'name': 'related_product_ids',
+          'value': product_ids * ',',
+        }
+
+
+        @custom_field_client.upsert(product_hash[:bc_product]['id'], field)
+
+
+        product_hash[:custom_fields][:upsert].push(field)
         product_ids.push(product_hash[:bc_product]['id'])
       end
 
       return product_data
-    rescue => e
-      create_event payload: {
-        status: 500,
-        scope: 'set_related_product_ids',
-        message: e.message(),
-        trace: e.backtrace.join('\n'),
-        data: product_data,
-      }
-    end
+
+      rescue => e
+        create_event payload: {
+          status: 500,
+          scope: 'set_related_product_ids',
+          message: e.message(),
+          trace: e.backtrace.join('\n'),
+          data: product_data,
+        }
+      end
     end
 
     private

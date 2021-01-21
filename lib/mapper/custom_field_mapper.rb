@@ -18,8 +18,8 @@ module BigcommerceProductAgent
                 end
 
                 if field_map && field_map['additionalProperty']
-                    field_map['additionalProperty'].each do |key, val|
-                        field = self.from_additional_property(raw_product, existing_fields, key, val)
+                    field_map['additionalProperty'].each do |from_key, to_key|
+                        field = self.from_additional_property(raw_product, existing_fields, from_key, to_key)
                         if field
                           field['product_id'] = bc_product['id']
                           fields[:upsert].push(field)
@@ -28,12 +28,12 @@ module BigcommerceProductAgent
                 end
 
                 if field_map
-                    field_map.each do |key, val|
-                        if key == 'additionalProperty'
+                    field_map.each do |from_key, to_key|
+                        if from_key == 'additionalProperty'
                             next
                         end
 
-                        field = self.from_property(raw_product, existing_fields, key, val)
+                        field = self.from_property(raw_product, existing_fields, from_key, to_key)
                         if field
                           field['product_id'] = bc_product['id']
                           fields[:upsert].push(field)
