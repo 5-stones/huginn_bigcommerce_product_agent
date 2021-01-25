@@ -13,7 +13,7 @@ module BigcommerceProductAgent
                   height: product['height'] ? product['height']['value'] : '0',
                   is_default: product['isDefault'],
                   is_preorder_only: self.get_availability(product) == 'preorder' ? true : false,
-                  is_visible: true,
+                  is_visible: false, # All products are upserted as hidden and will be enabled at the end of the upsert process.
                   meta_description: self.meta_description(product) || '',
                   meta_keywords: self.meta_keywords(product),
                   name: name,
