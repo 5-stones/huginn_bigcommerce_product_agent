@@ -21,6 +21,7 @@ module BigcommerceProductAgent
                   preorder_message: self.get_availability(product) == 'preorder' ? product['availability'] : '',
                   preorder_release_date: product['releaseDate'] && product['releaseDate'].to_datetime ? product['releaseDate'].to_datetime.strftime("%FT%T%:z") : nil,
                   price: product['offers'] && product['offers'][0] ? product['offers'][0]['price'] : '0',
+                  retail_price: product['offers'] && product['offers'][0] ? product['offers'][0]['price'] : '0',
                   search_keywords: self.get_search_keywords(additional_data.delete(:additional_search_terms), product),
                   sku: product ? product['sku'] : default_sku,
                   type: product['isDigital'].to_s == 'true' ? 'digital' : 'physical',
