@@ -100,26 +100,35 @@ module Agents
 
         bc_product = lookup_existing_product(raw_product)
 
-        if (disable_existing_product(bc_product))
+        if (bc_product && !boolify(raw_product['isAvailableForPurchase']))
+          #  Before we do anything else, check to see if the product is actually
+          #  active. If not, we need to delete it.
+          delete_inactive_product(bc_product)
+        else
+          #  We either have an active product that needs to be updated or a new
+          # product that needs to be created.
+          if (disable_existing_product(bc_product))
 
-          begin
-            # Only process updates if the existing product has been disabled
-            bc_product = upsert_product(raw_product, bc_product, additional_data)
-            custom_fields = update_fields(raw_product, bc_product, get_mapper(:CustomFieldMapper), options['custom_fields_map'], @custom_field_client)
-            meta_fields = update_fields(raw_product, bc_product, get_mapper(:MetaFieldMapper), options['meta_fields_map'], @meta_field_client)
+            begin
+              # Only process updates if the existing product has been disabled
+              bc_product = upsert_product(raw_product, bc_product, additional_data)
+              custom_fields = update_fields(raw_product, bc_product, get_mapper(:CustomFieldMapper), options['custom_fields_map'], @custom_field_client)
+              meta_fields = update_fields(raw_product, bc_product, get_mapper(:MetaFieldMapper), options['meta_fields_map'], @meta_field_client)
 
-            # This will be emitted later as an event
-            results.push({
-              bc_product: bc_product,
-              custom_fields: custom_fields,
-              meta_fields: meta_fields,
-              acumen_data: raw_product
-            })
+              # This will be emitted later as an event
+              results.push({
+                bc_product: bc_product,
+                custom_fields: custom_fields,
+                meta_fields: meta_fields,
+                raw_product: raw_product
+              })
 
-          rescue => e
-            log({ raw_product: raw_product, bc_product: bc_product, error: e })
-            # Log the error and move on. Any errors caught here have already been handled and reported as error events.
-            # We are swallowing this exception because a failure with one product should not block the upsert of another.
+            rescue => e
+              log({ raw_product: raw_product, bc_product: bc_product, error: e })
+              # Log the error and move on. Any errors caught here have already been handled and reported as error events.
+              # We are swallowing this exception because a failure with one product should not block the upsert of another.
+            end
+
           end
 
         end
@@ -136,12 +145,7 @@ module Agents
       # that sets the related_product_ids field
       results.each do |data|
         begin
-          raw_product = data[:acumen_data]
-          if (raw_product['isAvailableForPurchase'])
-            # Following all updates, if the product is available for purchase
-            enable_updated_product(data[:bc_product])
-          end
-
+          enable_updated_product(data[:bc_product])
 
           create_event payload: {
             product: data,
@@ -175,6 +179,20 @@ module Agents
 
         # Rethrow the exception
         raise e
+      end
+    end
+
+    def delete_inactive_product(bc_product)
+      begin
+        @product_client.delete(bc_product['id'])
+      rescue => e
+        create_event payload: {
+          status: 500,
+          scope: 'delete_inactive_product',
+          message: e.message,
+          trace: e.backtrace.join('\n'),
+          bc_product: bc_product,
+        }
       end
     end
 
