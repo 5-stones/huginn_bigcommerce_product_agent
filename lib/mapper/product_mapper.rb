@@ -4,6 +4,7 @@ module BigcommerceProductAgent
 
             def self.map_payload(product, additional_data = {}, default_sku='')
                 name = product['name']
+                isDigital = product['isDigital'].to_s == 'true'
 
                 result = {
                   availability: self.get_availability(product),
@@ -24,9 +25,10 @@ module BigcommerceProductAgent
                   retail_price: product['offers'] && product['offers'][0] ? product['offers'][0]['price'] : '0',
                   search_keywords: self.get_search_keywords(additional_data.delete(:additional_search_terms), product),
                   sku: product ? product['sku'] : default_sku,
-                  type: product['isDigital'].to_s == 'true' ? 'digital' : 'physical',
+                  type: isDigital ? 'digital' : 'physical',
                   weight: product['weight'] ? product['weight']['value'] : '0',
                   width: product['width'] ? product['width']['value'] : '0',
+                  inventory_tracking: isDigital ? 'none' : 'product',
                 }
                 result[:upc] = product['gtin12'] if product['gtin12']
 
