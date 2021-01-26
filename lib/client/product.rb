@@ -8,11 +8,11 @@ module BigcommerceProductAgent
                     response = client.put(uri(product_id: id), payload.to_json) do |request|
                         request.params.update(params) if params
                     end
+
+                    return response.body['data']
                 rescue Faraday::Error::ClientError => e
                     raise e, "\n#{e.message}\nFailed to update product with payload = #{payload.to_json}\n", e.backtrace
                 end
-
-                return get_by_sku(payload[:sku])
             end
 
             def delete(id)
@@ -25,11 +25,11 @@ module BigcommerceProductAgent
                     response = client.post(uri, payload.to_json) do |request|
                         request.params.update(params) if params
                     end
+
+                    return response.body['data']
                 rescue Faraday::Error::ClientError => e
                     raise e, "\n#{e.message}\nFailed to create product with payload = #{payload.to_json}\n", e.backtrace
                 end
-
-                return get_by_sku(payload[:sku])
             end
 
             def upsert(payload, params={})
@@ -41,13 +41,13 @@ module BigcommerceProductAgent
                 end
             end
 
-            def get_by_sku(sku, include = %w[custom_fields modifiers])
-                product = index({
-                    'sku': sku,
+            def get_by_skus(skus, include = %w[custom_fields modifiers])
+                products = index({
+                    'sku:in': skus.join(','),
                     include: include.join(','),
                 })
 
-                return product[0]
+                return products
             end
 
             def disable(productId)
