@@ -102,11 +102,14 @@ module Agents
 
         bc_product = bc_products.find { |p| p['sku'] == raw_product['sku'] }
 
+        # Products that are in BC and not available for purchase get deleted
+        # else if product is available for purchase begin upsert process
+        # do nothing if product doesn't exist in BC and is not available for purchase
         if (bc_product && !boolify(raw_product['isAvailableForPurchase']))
           #  Before we do anything else, check to see if the product is actually
           #  active. If not, we need to delete it.
           delete_inactive_product(bc_product)
-        else
+        elsif (boolify(raw_product['isAvailableForPurchase']))
           #  We either have an active product that needs to be updated or a new
           # product that needs to be created.
           begin
