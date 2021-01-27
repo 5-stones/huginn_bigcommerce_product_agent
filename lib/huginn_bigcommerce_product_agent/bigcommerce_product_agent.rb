@@ -82,7 +82,8 @@ module Agents
     end
 
     def handle(event)
-      raw_products = event.payload
+      data = event.payload
+      raw_products = data['products']
       results = []
 
       # Loop through the provided raw_products and perform the upsert
@@ -92,13 +93,14 @@ module Agents
         additional_search_terms: [],
       }
 
-      raw_products['products'].each do |raw_product|
+      raw_products.each do |raw_product|
         additional_data[:additional_search_terms].push(raw_product['sku'])
       end
 
-      raw_products['products'].each do |raw_product|
+      bc_products = lookup_existing_products(raw_products)
+      raw_products.each do |raw_product|
 
-        bc_product = lookup_existing_product(raw_product)
+        bc_product = bc_products.find { |p| p['sku'] == raw_product['sku'] }
 
         if (bc_product && !boolify(raw_product['isAvailableForPurchase']))
           #  Before we do anything else, check to see if the product is actually
@@ -107,30 +109,25 @@ module Agents
         else
           #  We either have an active product that needs to be updated or a new
           # product that needs to be created.
-          if (disable_existing_product(bc_product))
+          begin
+            # Only process updates if the existing product has been disabled
+            bc_product = upsert_product(raw_product, bc_product, additional_data)
+            custom_fields = update_fields(raw_product, bc_product, get_mapper(:CustomFieldMapper), options['custom_fields_map'], @custom_field_client)
+            meta_fields = update_fields(raw_product, bc_product, get_mapper(:MetaFieldMapper), options['meta_fields_map'], @meta_field_client)
 
-            begin
-              # Only process updates if the existing product has been disabled
-              bc_product = upsert_product(raw_product, bc_product, additional_data)
-              custom_fields = update_fields(raw_product, bc_product, get_mapper(:CustomFieldMapper), options['custom_fields_map'], @custom_field_client)
-              meta_fields = update_fields(raw_product, bc_product, get_mapper(:MetaFieldMapper), options['meta_fields_map'], @meta_field_client)
+            # This will be emitted later as an event
+            results.push({
+              bc_product: bc_product,
+              custom_fields: custom_fields,
+              meta_fields: meta_fields,
+              raw_product: raw_product
+            })
 
-              # This will be emitted later as an event
-              results.push({
-                bc_product: bc_product,
-                custom_fields: custom_fields,
-                meta_fields: meta_fields,
-                raw_product: raw_product
-              })
-
-            rescue => e
-              log({ raw_product: raw_product, bc_product: bc_product, error: e })
-              # Log the error and move on. Any errors caught here have already been handled and reported as error events.
-              # We are swallowing this exception because a failure with one product should not block the upsert of another.
-            end
-
+          rescue => e
+            log({ raw_product: raw_product, bc_product: bc_product, error: e })
+            # Log the error and move on. Any errors caught here have already been handled and reported as error events.
+            # We are swallowing this exception because a failure with one product should not block the upsert of another.
           end
-
         end
       end
 
@@ -138,15 +135,8 @@ module Agents
         results = set_related_product_ids(results)
       end
 
-      # After updates have been processed, loop through the created BigCommerce
-      # products and reactivate those that are not already active.
-      #
-      # NOTE: This happens last because there is an intermediate step in the upsert
-      # that sets the related_product_ids field
       results.each do |data|
         begin
-          enable_updated_product(data[:bc_product])
-
           create_event payload: {
             product: data,
             status: 200
@@ -165,16 +155,18 @@ module Agents
 
     # Attempt to find an existing BigCommerce product by SKU
     # Returns nil if no matching product is found.
-    def lookup_existing_product(raw_product)
+    def lookup_existing_products(raw_products)
       begin
-        bc_product = @product_client.get_by_sku(raw_product['sku'])
+        bc_products = @product_client.get_by_skus(raw_products.map { |r| r['sku'] })
+
+        return bc_products
       rescue => e
         create_event payload: {
           status: 500,
-          scope: 'lookup_existing_product',
+          scope: 'lookup_existing_products',
           message: e.message,
           trace: e.backtrace.join('\n'),
-          raw_product: raw_product,
+          raw_product: raw_products,
         }
 
         # Rethrow the exception
@@ -195,53 +187,6 @@ module Agents
         }
       end
     end
-
-    # If the product already exists in BigCommerce, disable it before processing
-    # any updates. Returns true if the product was successfully disabled
-    def disable_existing_product(bc_product)
-
-      if (bc_product.nil?)
-        # If no product exists yet, there is nothing to disable. Return a successful response
-        return true
-      end
-
-      begin
-        # Disable the product as we process the upsert to ensure users don't see incorrect data
-        @product_client.disable(bc_product['id'])
-        return true
-
-      rescue => e
-        create_event payload: {
-          status: 500,
-          scope: 'disable_existing_product',
-          message: e.message,
-          trace: e.backtrace.join('\n'),
-          bc_product_id: id,
-        }
-
-        return false
-      end
-    end
-
-    # Fires after updates have been processed and re-enables the product
-    def enable_updated_product(bc_product)
-      begin
-        @product_client.enable(bc_product['id'])
-        return true
-
-      rescue => e
-        create_event payload: {
-          status: 500,
-          scope: 'enable_existing_product',
-          message: e.message,
-          trace: e.backtrace.join('\n'),
-          bc_product_id: id,
-        }
-
-        return false
-      end
-    end
-
 
     # Upsert the core product record in BigCommerce This handles all fields stored
     # directly on the BigCommerce product object: name, sku, price, etc.
