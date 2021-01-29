@@ -8,20 +8,22 @@ module BigcommerceProductAgent
                     delete: [],
                 }
 
-                existing_fields = {}
+                to_delete = {}
 
                 if bc_product && current_custom_fields
                     current_custom_fields.each do |cf|
                         cf['product_id'] = bc_product['id']
-                        existing_fields[cf['name'].to_s] = cf
+
+                        # Initially assume that a field should be deleted.
+                        to_delete[cf['name'].to_s] = cf
                     end
                 end
 
                 if field_map && field_map['additionalProperty']
                     field_map['additionalProperty'].each do |from_key, to_key|
-                        field = self.from_additional_property(raw_product, existing_fields, from_key, to_key)
+                        field = self.from_additional_property(raw_product, to_delete, from_key, to_key)
                         if field
-                          field['product_id'] = bc_product['id']
+                          field['product_id'] = bc_product['id'] unless bc_product.nil?
                           fields[:upsert].push(field)
                         end
                     end
@@ -33,16 +35,16 @@ module BigcommerceProductAgent
                             next
                         end
 
-                        field = self.from_property(raw_product, existing_fields, from_key, to_key)
+                        field = self.from_property(raw_product, to_delete, from_key, to_key)
                         if field
-                          field['product_id'] = bc_product['id']
+                          field['product_id'] = bc_product['id'] unless bc_product.nil?
                           fields[:upsert].push(field)
                         end
                     end
                 end
 
                 # return values that need deleted
-                fields[:delete] = existing_fields.values
+                fields[:delete] = to_delete.values
                 return fields
             end
 
@@ -63,23 +65,23 @@ module BigcommerceProductAgent
 
             private
 
-            def self.from_property(raw_product, existing_fields, from_key, to_key)
+            def self.from_property(raw_product, fields_to_delete, from_key, to_key)
                 if !raw_product[from_key].nil?
                     field = {
                         name: to_key,
                         value: raw_product[from_key].to_s
                     }
 
-                    if existing_fields[to_key]
-                        field[:id] = existing_fields[to_key]['id']
-                        existing_fields.delete(to_key)
+                    if fields_to_delete[to_key]
+                        field[:id] = fields_to_delete[to_key]['id']
+                        fields_to_delete.delete(to_key)
                     end
 
                     return field
                 end
             end
 
-            def self.from_additional_property(raw_product, existing_fields, from_key, to_key)
+            def self.from_additional_property(raw_product, fields_to_delete, from_key, to_key)
                 # date published
                 item = raw_product['additionalProperty'].select {|p| p['propertyID'] == from_key}.first
                 if !item.nil?
@@ -88,9 +90,9 @@ module BigcommerceProductAgent
                         value: item['value'].to_s
                     }
 
-                    if existing_fields[to_key]
-                        field[:id] = existing_fields[to_key]['id']
-                        existing_fields.delete(to_key)
+                    if fields_to_delete[to_key]
+                        field[:id] = fields_to_delete[to_key]['id']
+                        fields_to_delete.delete(to_key)
                     end
 
                     return field

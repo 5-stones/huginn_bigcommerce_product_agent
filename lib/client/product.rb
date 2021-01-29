@@ -15,6 +15,18 @@ module BigcommerceProductAgent
                 end
             end
 
+            def update_batch(payload, params={})
+              begin
+                  response = client.put(uri(), payload.to_json) do |request|
+                      request.params.update(params) if params
+                  end
+
+                  return response.body['data']
+              rescue Faraday::Error::ClientError => e
+                  raise e, "\n#{e.message}\nFailed to update product batch with payload = #{payload.to_json}\n", e.backtrace
+              end
+            end
+
             def delete(id)
                 response = client.delete(uri(product_id: id))
                 return true
