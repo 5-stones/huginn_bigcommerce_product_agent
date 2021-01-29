@@ -56,7 +56,7 @@ module BigcommerceProductAgent
             def self.meta_keywords(product)
                 meta_keywords = []
 
-                product['keywords'].split(',') unless product['keywords'].nil?
+                meta_keywords = product['keywords'].split(',') unless product['keywords'].nil?
 
                 return meta_keywords
             end
