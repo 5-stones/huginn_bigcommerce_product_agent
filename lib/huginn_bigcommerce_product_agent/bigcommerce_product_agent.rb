@@ -146,7 +146,12 @@ module Agents
       end
 
       #-----   Handle final upserts   -----#
-      upsert_products(mapped_products)
+      unless mapped_products.blank?
+        # NOTE: An empty array here would indicate that a title has been removed
+        # from sale completely and is not available in any format. Most of the
+        # time, mapped_products should have at least one item.
+        upsert_products(mapped_products)
+      end
     end
 
     # Attempt to find an existing BigCommerce product by SKU
@@ -259,14 +264,23 @@ module Agents
         payload
       end
 
-      @product_client.update_batch(data, { include: 'custom_fields' }).each do |p|
-        result = results[p['sku']]
-        result[:custom_fields] = p['custom_fields']
-        result[:bc_product] = p
+      begin
+        @product_client.update_batch(data, { include: 'custom_fields' }).each do |p|
+          result = results[p['sku']]
+          result[:custom_fields] = p['custom_fields']
+          result[:bc_product] = p
 
+          create_event payload: {
+            product: result,
+            status: 200,
+          }
+      rescue => e
         create_event payload: {
-          product: result,
-          status: 200,
+          status: 500,
+          scope: 'upsert_products',
+          message: e.message,
+          trace: e.backtrace.join('\n'),
+          product_data: data,
         }
       end
     end
