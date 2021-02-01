@@ -258,7 +258,9 @@ module Agents
           'value': related_product_ids * ',' # concatenate as a CSV
         }
 
-        payload['custom_fields'].push(field) unless related_product_ids.empty?
+        unless related_product_ids.empty?
+          payload['custom_fields'].push(field)
+        end
 
         # return the finalized payload
         payload
@@ -274,6 +276,7 @@ module Agents
             product: result,
             status: 200,
           }
+        end
       rescue => e
         create_event payload: {
           status: 500,
