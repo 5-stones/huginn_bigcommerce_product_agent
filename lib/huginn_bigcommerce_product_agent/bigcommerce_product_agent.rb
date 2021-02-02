@@ -132,24 +132,43 @@ module Agents
           delete_inactive_product(bc_product)
       end
 
+      # A Note regarding the nil checks below. In order to improve the efficiency
+      # of this agent, we process requests in batch wherever possible. However,
+      # we don't want errors with one product to prevent others in the bundle from
+      # processing.
+      #
+      # Methods that process single records intentionally return `nil` in the event
+      # of an error to facilitate this, and `nil` entries are excluded from the
+      # batch processes. Additionally, any such processing errors are emitted as
+      # error events with `status: 500` to facilitate reporting.
+
       #-----   Handle the creation of any new products   -----#
       to_create.each do |raw_product|
         bc_product = create_new_product(raw_product, additional_data)
-        mapped_products.push({ bc_payload: bc_product, raw_product: raw_product })
-        bc_products << bc_product
+        unless bc_product.nil?
+          mapped_products.push({ bc_payload: bc_product, raw_product: raw_product })
+        end
       end
 
       #-----   Process updates for existing products   -----#
       to_update.each do |raw_product|
         bc_product = bc_products.find { |bc| bc['sku'] == raw_product['sku'] }
-        mapped_products.push(process_updates(raw_product, bc_product, additional_data))
+        mapped_product = process_updates(raw_product, bc_product, additional_data)
+
+        unless mapped_product.nil?
+          mapped_products.push(mapped_product)
+        end
       end
 
       #-----   Handle final upserts   -----#
       unless mapped_products.blank?
-        # NOTE: An empty array here would indicate that a title has been removed
+        # NOTE: An empty array here likely indicates that a title has been removed
         # from sale completely and is not available in any format. Most of the
         # time, mapped_products should have at least one item.
+        #
+        # In rare cases, it may mean that all products resulted in a processing
+        # error, but since those are tracked individually, we don't need to issue
+        # any errors here.
         upsert_products(mapped_products)
       end
     end
@@ -170,8 +189,12 @@ module Agents
           raw_product: raw_products,
         }
 
-        # Rethrow the exception
         raise e
+        # This exception is intentionally rethrown because it means we were unable
+        # lookup existing BigCommerce records. (If there were no matching SKUs, the
+        # response would be an empty array). In this case, we don't have enough
+        # information to accurately process the incoming raw products, so we must
+        # fail.
       end
     end
 
@@ -192,10 +215,10 @@ module Agents
     # Handles the creation of new product records
     def create_new_product(raw_product, additional_data)
       begin
-        payload = map_product(raw_product, nil, additional_data)
+        bc_payload = map_product(raw_product, nil, additional_data)
         custom_fields = map_custom_fields(raw_product, nil)
-        payload['custom_fields'] = custom_fields[:upsert]
-        return @product_client.create(payload)
+        bc_payload['custom_fields'] = custom_fields[:upsert]
+        return @product_client.create(bc_payload, { include: 'custom_fields' })
       rescue => e
         create_event payload: {
           status: 500,
@@ -203,8 +226,10 @@ module Agents
           message: e.message(),
           trace: e.backtrace.join('\n'),
           raw_product: raw_product,
-          product_data: payload,
+          product_data: bc_payload,
         }
+
+        return nil
       end
     end
 
@@ -213,25 +238,30 @@ module Agents
     def process_updates(raw_product, bc_product, additional_data)
       custom_fields = map_custom_fields(raw_product, bc_product)
 
-      begin
-        # Delete custom fields that are no longer used
-        custom_fields[:delete].each do |field|
+      custom_fields[:delete].each do |field|
+        begin
+          # Delete custom fields that are no longer used
           @custom_field_client.delete(bc_product['id'], field['id'])
+        rescue => e
+          create_event payload: {
+            status: 500,
+            scope: 'delete_custom_fields',
+            message: e.message(),
+            trace: e.backtrace.join('\n'),
+            product_id: bc_product['id'],
+            deletes: custom_fields[:delete]
+          }
         end
-      rescue => e
-        create_event payload: {
-          status: 500,
-          scope: 'delete_custom_fields',
-          message: e.message(),
-          trace: e.backtrace.join('\n'),
-          product_id: bc_product['id'],
-          deletes: custom_fields[:delete]
-        }
       end
 
-      payload = map_product(raw_product, bc_product, additional_data)
-      payload['custom_fields'] = custom_fields[:upsert]
-      return { bc_payload: payload, raw_product: raw_product }
+      bc_payload = map_product(raw_product, bc_product, additional_data)
+
+      if bc_payload.present?
+        bc_payload['custom_fields'] = custom_fields[:upsert]
+        return { bc_payload: bc_payload, raw_product: raw_product }
+      else
+        return nil
+      end
     end
 
     # Sends a batch update request for the provided products
@@ -240,11 +270,11 @@ module Agents
       product_ids = mapped_products.map { |p| p[:bc_payload]['id'] }
       results = {}
 
-      data = mapped_products.map do |p|
-        payload = p[:bc_payload]
+      product_data = mapped_products.map do |p|
+        bc_payload = p[:bc_payload]
         raw_product = p[:raw_product]
 
-        meta_fields = update_meta_fields(raw_product, payload)
+        meta_fields = update_meta_fields(raw_product, bc_payload)
         results[raw_product['sku']] = {
           raw_product: raw_product,
           meta_fields: meta_fields[:upsert],
@@ -252,22 +282,26 @@ module Agents
         }
 
         #-----  Set related_product_ids  -----#
-        related_product_ids = product_ids.select { |id| id != payload['id'] }
+        related_product_ids = product_ids.select { |id| id != bc_payload['id'] }
         field = {
           'name': 'related_product_ids',
           'value': related_product_ids * ',' # concatenate as a CSV
         }
 
         unless related_product_ids.empty?
-          payload['custom_fields'].push(field)
+          if bc_payload['custom_fields'].blank?
+            bc_payload['custom_fields'] = []
+          end
+
+          bc_payload['custom_fields'].push(field)
         end
 
         # return the finalized payload
-        payload
+        bc_payload
       end
 
       begin
-        @product_client.update_batch(data, { include: 'custom_fields' }).each do |p|
+        @product_client.update_batch(product_data, { include: 'custom_fields' }).each do |p|
           result = results[p['sku']]
           result[:custom_fields] = p['custom_fields']
           result[:bc_product] = p
@@ -283,7 +317,7 @@ module Agents
           scope: 'upsert_products',
           message: e.message,
           trace: e.backtrace.join('\n'),
-          product_data: data,
+          product_data: product_data,
         }
       end
     end
@@ -291,12 +325,15 @@ module Agents
     # Map the raw_product record to bc_product fields. The bc_product passed in may be null
     # if the product does not exist yet in BigCommerce.
     def map_product(raw_product, bc_product, additional_data)
-      begin
-        payload = get_mapper(:ProductMapper).map_payload(raw_product, additional_data)
-        payload['id'] = bc_product['id'] unless bc_product['id'].nil?
+      bc_payload = nil
 
-        if payload[:type] == 'digital'
-          payload[:name].concat(' (Digital)')
+      begin
+        bc_payload = get_mapper(:ProductMapper).map_payload(raw_product, additional_data)
+        bc_payload['id'] = bc_product['id'] unless bc_product.nil? || bc_product['id'].nil?
+        # NOTE: bc_product will be nil when this is called with `to_create` products
+
+        if bc_payload[:type] == 'digital'
+          bc_payload[:name].concat(' (Digital)')
         end
 
         # BigCommerce requires that product names be unique. In some cases, (like book titles from multiple sources),
@@ -306,23 +343,22 @@ module Agents
         #
         # page_title is the user-facing display value for product pages.
         if boolify(options['should_disambiguate'])
-           payload[:page_title] = payload[:name]
-           payload[:name] = payload[:name] + " |~ " + raw_product['sku']
+           bc_payload[:page_title] = bc_payload[:name]
+           bc_payload[:name] = bc_payload[:name] + " |~ " + raw_product['sku']
         end
 
-        return payload
+        return bc_payload
       rescue => e
         create_event payload: {
           status: 500,
           scope: 'map_product',
           message: e.message(),
           trace: e.backtrace.join('\n'),
-          product_payload: payload,
+          product_payload: bc_payload,
         }
-
-        # Rethrow the initial exception
-        raise e
       end
+
+      return nil
     end
 
     #  Maps custom field values from the raw_product to the bc_payload
@@ -331,27 +367,76 @@ module Agents
     def map_custom_fields(raw_product, bc_payload)
       current_fields = bc_payload.nil? ? [] : bc_payload['custom_fields']
 
-      return get_mapper(:CustomFieldMapper).map(options['custom_fields_map'], raw_product, bc_payload, current_fields, options['meta_fields_namespace'])
+      begin
+        return get_mapper(:CustomFieldMapper).map(options['custom_fields_map'], raw_product, bc_payload, current_fields, options['meta_fields_namespace'])
+      rescue => e
+        create_event payload: {
+          status: 500,
+          scope: 'map_custom_fields',
+          message: e.message(),
+          trace: e.backtrace.join('\n'),
+          field_map: options['custom_fields_map'],
+          raw_product: raw_product,
+          product_payload: bc_payload,
+        }
+
+        return nil
+      end
     end
 
     #  Manages meta field values for the provided product records.
     #  NOTE: Because meta fields have to be managed separately, this function will
     #  map the raw_product data and also handle any delete/create/update requests.
     def update_meta_fields(raw_product, bc_payload)
+      current_fields = nil
 
       begin
         current_fields = @meta_field_client.get_for_product(bc_payload['id'])
+      rescue => e
+        create_event payload: {
+          status: 500,
+          scope: 'update_meta_fields',
+          message: "Failed to lookup existing meta fields: #{e.message()}",
+          trace: e.backtrace.join('\n'),
+          product_id: bc_payload['id'],
+        }
 
+        return nil
+      end
+
+      begin
         fields = get_mapper(:MetaFieldMapper).map(options['meta_fields_map'], raw_product, bc_payload, current_fields, options['meta_fields_namespace'])
 
         # Delete fields
         fields[:delete].each do |field|
-            @meta_field_client.delete(bc_payload['id'], field['id'])
+            begin
+              @meta_field_client.delete(bc_payload['id'], field['id'])
+            rescue => e
+              create_event payload: {
+                status: 500,
+                scope: 'update_meta_fields',
+                message: "Failed to delete meta field: #{e.message()}",
+                trace: e.backtrace.join('\n'),
+                product_id: bc_payload['id'],
+                field: field,
+              }
+            end
         end
 
         # Upsert fields
         fields[:upsert].each do |field|
+          begin
             @meta_field_client.upsert(bc_payload['id'], field)
+          rescue => e
+            create_event payload: {
+              status: 500,
+              scope: 'update_meta_fields',
+              message: "Failed to update meta field: #{e.message()}",
+              trace: e.backtrace.join('\n'),
+              product_id: bc_payload['id'],
+              field: field,
+            }
+          end
         end
 
         return fields
@@ -359,13 +444,15 @@ module Agents
         create_event payload: {
           status: 500,
           scope: 'update_meta_fields',
-          message: e.message(),
+          message: "Failed to map meta field data: #{e.message()}",
           trace: e.backtrace.join('\n'),
           field_map: options['meta_fields_map'],
           raw_product: raw_product,
           bc_payload: bc_payload,
           current_fields: current_fields,
         }
+
+        return nil
       end
     end
 
