@@ -24,7 +24,8 @@ module Agents
         'meta_fields_map' => {},
         'meta_fields_namespace' => '',
         'not_purchasable_format_list' => [],
-        'should_disambiguate' => false
+        'should_disambiguate' => false,
+
       }
     end
 
@@ -61,6 +62,10 @@ module Agents
 
         if options.has_key?('should_disambiguate') && boolify(options['should_disambiguate']).nil?
           errors.add(:base, 'when provided, `should_disambiguate` must be either true or false')
+        end
+
+        if options.has_key?('track_inventory') && boolify(options['track_inventory']).nil?
+          errors.add(:base, 'when provided, `track_inventory` must be true or false')
         end
 
     end
@@ -328,7 +333,8 @@ module Agents
       bc_payload = nil
 
       begin
-        bc_payload = get_mapper(:ProductMapper).map_payload(raw_product, additional_data)
+        track_inventory = boolify(options['track_inventory']).nil? ? true : boolify(options['track_inventory'])
+        bc_payload = get_mapper(:ProductMapper).map_payload(raw_product, additional_data, track_inventory)
         bc_payload['id'] = bc_product['id'] unless bc_product.nil? || bc_product['id'].nil?
         # NOTE: bc_product will be nil when this is called with `to_create` products
 

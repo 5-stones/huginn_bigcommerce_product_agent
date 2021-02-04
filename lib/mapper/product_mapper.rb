@@ -2,7 +2,7 @@ module BigcommerceProductAgent
     module Mapper
         class ProductMapper
 
-            def self.map_payload(product, additional_data = {}, default_sku='')
+            def self.map_payload(product, additional_data = {}, track_inventory = true, default_sku = '')
                 name = product['name']
                 isDigital = product['isDigital'].to_s == 'true'
 
@@ -28,7 +28,7 @@ module BigcommerceProductAgent
                   type: isDigital ? 'digital' : 'physical',
                   weight: product['weight'] ? product['weight']['value'] : '0',
                   width: product['width'] ? product['width']['value'] : '0',
-                  inventory_tracking: isDigital ? 'none' : 'product',
+                  inventory_tracking: isDigital || !track_inventory ? 'none' : 'product',
                 }
                 result[:upc] = product['gtin12'] if product['gtin12']
 
