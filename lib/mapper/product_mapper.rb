@@ -83,6 +83,10 @@ module BigcommerceProductAgent
             end
 
             def self.get_availability(product)
+                if product['productAvailability'] == 'disabled'
+                  return 'disabled'
+                end
+
                 if product['datePublished'] && product['datePublished'].to_datetime && product['datePublished'].to_datetime < DateTime.now
                     return 'available'
                 else

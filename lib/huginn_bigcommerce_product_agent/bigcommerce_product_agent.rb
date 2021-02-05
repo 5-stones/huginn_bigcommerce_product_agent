@@ -125,9 +125,9 @@ module Agents
       # because the update step allows us to populate custom fields in bulk (including the `related_product_ids`
       # field), so we still come out ahead in terms of overall performance.
 
-      to_create = raw_products.select { |p| boolify(p['isAvailableForPurchase']) && !existing_skus.include?(p['sku'])}
-      to_delete = raw_products.select { |p| !boolify(p['isAvailableForPurchase']) && existing_skus.include?(p['sku'])}
-      to_update = raw_products.select { |p| boolify(p['isAvailableForPurchase']) && existing_skus.include?(p['sku'])}
+      to_create = raw_products.select { |p| p['productAvailability'] != 'not available' && !existing_skus.include?(p['sku'])}
+      to_delete = raw_products.select { |p| p['productAvailability'] == 'not available' && existing_skus.include?(p['sku'])}
+      to_update = raw_products.select { |p| p['productAvailability'] != 'not available' && existing_skus.include?(p['sku'])}
 
       mapped_products = [] # Contains an array of { :bc_payload, :raw_product } hashes
 
