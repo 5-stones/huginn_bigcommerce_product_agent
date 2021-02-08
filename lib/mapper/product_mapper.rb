@@ -30,7 +30,7 @@ module BigcommerceProductAgent
                   width: product['width'] ? product['width']['value'] : '0',
                   inventory_tracking: isDigital || !track_inventory ? 'none' : 'product',
                 }
-                result[:upc] = product['gtin12'] if product['gtin12']
+                result[:upc] = product['isbn'] ? product['isbn'] : product['gtin12']
 
                 result.merge(additional_data)
             end
