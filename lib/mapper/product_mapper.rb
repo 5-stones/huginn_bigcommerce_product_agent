@@ -75,6 +75,7 @@ module BigcommerceProductAgent
             # get a list of search keywords for the products
             def self.get_search_keywords(additional_search_terms, product)
               search_keywords = self.meta_keywords(product)
+              search_keywords << product['isbn'] if product['isbn'].present?
               if (additional_search_terms && !additional_search_terms.empty?)
                 search_keywords.concat(additional_search_terms)
               end
