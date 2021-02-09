@@ -31,6 +31,7 @@ module BigcommerceProductAgent
                   inventory_tracking: isDigital || !track_inventory ? 'none' : 'product',
                 }
                 result[:upc] = product['isbn'] ? product['isbn'] : product['gtin12']
+                result[:gtin] = product['gtin12'] if product['gtin12']
 
                 result.merge(additional_data)
             end
