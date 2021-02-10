@@ -76,6 +76,7 @@ module BigcommerceProductAgent
             # get a list of search keywords for the products
             def self.get_search_keywords(additional_search_terms, product)
               search_keywords = self.meta_keywords(product)
+              search_keywords << product['isbn'] if product['isbn'].present?
               if (additional_search_terms && !additional_search_terms.empty?)
                 search_keywords.concat(additional_search_terms)
               end
@@ -84,22 +85,10 @@ module BigcommerceProductAgent
             end
 
             def self.get_availability(product)
-                if product['productAvailability'] == 'disabled'
+                if product['productAvailability'] == 'not available'
                   return 'disabled'
-                end
-
-                if product['datePublished'] && product['datePublished'].to_datetime && product['datePublished'].to_datetime < DateTime.now
-                    return 'available'
                 else
-                    if product['releaseDate'] && product['releaseDate'].to_datetime
-                        if product['releaseDate'].to_datetime > DateTime.now
-                            return 'preorder'
-                        else
-                            return 'available'
-                        end
-                    else
-                        return 'disabled'
-                    end
+                  return product['productAvailability']
                 end
             end
         end
