@@ -53,10 +53,12 @@ module BigcommerceProductAgent
                 end
             end
 
-            def get_by_skus(skus, include = %w[custom_fields modifiers])
+            # When using sku:in you must specify the fields you want returned.
+            def get_by_skus(skus, include = %w[custom_fields modifiers], include_fields = %w[sku])
                 products = index({
                     'sku:in': skus.join(','),
                     include: include.join(','),
+                    include_fields: include_fields.join(','),
                 })
 
                 return products
