@@ -6,6 +6,8 @@ module BigcommerceProductAgent
                 name = product['name']
                 isDigital = product['isDigital'].to_s == 'true'
 
+                track_inventory = self.get_availability(product) == 'preorder' ? false : track_inventory
+
                 result = {
                   availability: self.get_availability(product),
                   categories: self.get_categories(product),
@@ -19,7 +21,7 @@ module BigcommerceProductAgent
                   meta_keywords: self.meta_keywords(product),
                   name: name,
                   page_title: product['page_title'] || '',
-                  preorder_message: self.get_availability(product) == 'preorder' ? product['availability'] : '',
+                  preorder_message: self.get_availability(product) == 'preorder' ? product['offers'][0]['availability'] : '',
                   preorder_release_date: product['releaseDate'] && product['releaseDate'].to_datetime ? product['releaseDate'].to_datetime.strftime("%FT%T%:z") : nil,
                   price: product['offers'] && product['offers'][0] ? product['offers'][0]['price'] : '0',
                   retail_price: product['offers'] && product['offers'][0] ? product['offers'][0]['price'] : '0',
