@@ -1,3 +1,29 @@
+# [2.0.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.12.0...v2.0.0) (2021-03-24)
+
+
+### Bug Fixes
+
+* **big_commerce_product_agent:** fix handling of error events ([a819372](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/a819372500ab66ed1a83ddbcb879e326173a58db))
+* **big_commerce_product_agent:** Improve agent execution speed ([59cd4f3](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/59cd4f3f5a1052926680605b1c754dd6064f7c2f))
+* **bigcommerce_product_agent:** Change handling of product availability ([7010113](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/7010113e0ff14f1cc466f1c7cd8b34f7002d6b0d))
+* **bigcommerce_product_agent:** fix syntax error ([ab34948](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/ab349483361a60667da3ed6fc4e2486075c65bdd))
+* **bigcommerce_product_agent:** improve error handling for upserts ([ec1bf58](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/ec1bf58940a8585941ff3d1fcfd13b9e87a975f3))
+* **client/product,bigcommerce_product_agent:** Consolidate API requests ([070669a](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/070669a1b3a4d622b833255ef0469724f2f551bf))
+* **product_mapper:** add isbn to search terms ([9a8dc73](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/9a8dc73ae0e9a49726bccebf981328c16492898f))
+* **product_mapper:** Adjust handling of product availability ([56dae39](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/56dae3904feb1365272d9558467a293260a0f560))
+* **product_mapper:** set retail_price ([c486e40](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/c486e40ab7cca75a26fff9ba364f991b4cfa083f))
+* **product_mapper.rb:** fix keywords ([4760dd5](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/4760dd5835bd654c22fbac4f8a37cc23ae2f4214))
+
+
+### Features
+
+* **big_commerce_product_agent:** delete inactive products ([e8f3f75](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/e8f3f7585a26239e73f902682fc1cdd81b008c28))
+* **big_commerce_product_agent:** Support conditional inventory tracking ([5317669](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/53176699859ccbed49605e97bb3199b2dd4cf67d))
+* **product_mapper:** track inventory ([5d3083f](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/5d3083f8dcbd07396ae5485cc5ca618b8bb04821))
+* **product_mapper:** update inventory tracking for physical products ([a0fe2bb](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/a0fe2bbc35a987ea4537ceb048bbf940306ffdef))
+
+
+
 # [1.12.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.11.1...v1.12.0) (2020-11-06)
 
 
