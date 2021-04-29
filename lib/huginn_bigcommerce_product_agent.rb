@@ -12,4 +12,5 @@ Dir[File.join(__dir__, 'mapper', '*.rb')].each do |file|
     HuginnAgent.load file
 end
 
+HuginnAgent.load 'huginn_bigcommerce_product_agent/big_commerce_product_error'
 HuginnAgent.register 'huginn_bigcommerce_product_agent/bigcommerce_product_agent'

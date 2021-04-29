@@ -39,8 +39,19 @@ module BigcommerceProductAgent
                   return create(product_id, meta_field)
                 end
               rescue Faraday::Error::ClientError => e
-                puts e.inspect
-                raise e
+                # include the field ID and name in the error here as _create_ requests have no ID
+                raise BigCommerceProductError.new(
+                  e.response_status,
+                  'upsert meta field',
+                  'Failed to upsert meta field field',
+                  product_id,
+                  {
+                    meta_field_id: meta_field['id'],
+                    field_name: meta_field['key'],
+                    errors: e.response_body['errors'],
+                  },
+                  e
+                )
               end
             end
 
@@ -48,7 +59,17 @@ module BigcommerceProductAgent
                 begin
                     client.delete(uri(product_id: product_id, meta_field_id: meta_field_id))
                 rescue Faraday::Error::ClientError => e
-                    raise e, "\n#{e.message}\nFailed to delete meta_field with id = #{meta_field_id}\nfor product with id = #{product_id}\n", e.backtrace
+                  raise BigCommerceProductError.new(
+                    e.response_status,
+                    'delete meta field',
+                    'Failed to delete meta field',
+                    product_id,
+                    {
+                      meta_field_id: meta_field_id,
+                      errors: e.response_body['errors'],
+                    },
+                    e
+                  )
                 end
             end
         end
