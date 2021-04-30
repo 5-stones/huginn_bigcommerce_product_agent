@@ -11,7 +11,17 @@ module BigcommerceProductAgent
 
                     return response.body['data']
                 rescue Faraday::Error::ClientError => e
-                    raise e, "\n#{e.message}\nFailed to update product with payload = #{payload.to_json}\n", e.backtrace
+                  raise BigCommerceProductError.new(
+                    e.response_status,
+                    'update product',
+                    'Failed to update product',
+                    id,
+                    {
+                      sku: payload[:sku],
+                      errors: e.response_body['errors'],
+                    },
+                    e
+                  )
                 end
             end
 
@@ -23,7 +33,18 @@ module BigcommerceProductAgent
 
                   return response.body['data']
               rescue Faraday::Error::ClientError => e
-                  raise e, "\n#{e.message}\nFailed to update product batch with payload = #{payload.to_json}\n", e.backtrace
+                raise BigCommerceProductError.new(
+                  e.response_status,
+                  'update product',
+                  'Failed to update product batch',
+                  {
+                    product_identifiers: payload.map { |p|
+                      { id: p[:id], sku: p[:sku] }
+                    },
+                    errors: e.response_body['errors'],
+                  },
+                  e
+                )
               end
             end
 
@@ -40,7 +61,17 @@ module BigcommerceProductAgent
 
                     return response.body['data']
                 rescue Faraday::Error::ClientError => e
-                    raise e, "\n#{e.message}\nFailed to create product with payload = #{payload.to_json}\n", e.backtrace
+                  raise BigCommerceProductError.new(
+                    e.response_status,
+                    'create product',
+                    'Failed to create product',
+                    nil,
+                    {
+                      sku: payload[:sku],
+                      errors: e.response_body['errors'],
+                    },
+                    e
+                  )
                 end
             end
 

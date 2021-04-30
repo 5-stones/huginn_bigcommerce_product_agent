@@ -185,13 +185,12 @@ module Agents
         bc_products = @product_client.get_by_skus(raw_products.map { |r| r['sku'] })
 
         return bc_products
-      rescue => e
+      rescue BigCommerceProductError => e
         create_event payload: {
-          status: 500,
-          scope: 'lookup_existing_products',
+          status: e.status,
+          scope: e.scope,
           message: e.message,
-          trace: e.backtrace.join('\n'),
-          raw_product: raw_products,
+          data: e.data,
         }
 
         raise e
@@ -206,14 +205,17 @@ module Agents
     def delete_inactive_product(bc_product)
       begin
         @product_client.delete(bc_product['id'])
+      rescue BigCommerceProductError => e
+        emit_error(e)
       rescue => e
-        create_event payload: {
-          status: 500,
-          scope: 'delete_inactive_product',
-          message: e.message,
-          trace: e.backtrace.join('\n'),
-          bc_product: bc_product,
-        }
+        emit_error(BigCommerceProductError.new(
+          500,
+          'delete inactive_product',
+          e.message,
+          bc_product['id'],
+          { sku: bc_product['sku'] },
+          e,
+        ))
       end
     end
 
@@ -224,18 +226,20 @@ module Agents
         custom_fields = map_custom_fields(raw_product, nil)
         bc_payload['custom_fields'] = custom_fields[:upsert]
         return @product_client.create(bc_payload, { include: 'custom_fields' })
+      rescue BigCommerceProductError => e
+        emit_error(e)
       rescue => e
-        create_event payload: {
-          status: 500,
-          scope: 'create_product',
-          message: e.message(),
-          trace: e.backtrace.join('\n'),
-          raw_product: raw_product,
-          product_data: bc_payload,
-        }
-
-        return nil
+        emit_error(BigCommerceProductError.new(
+          500,
+          'create_new_product',
+          e.message,
+          nil,
+          { sku: bc_product['sku'] },
+          e
+        ))
       end
+
+      return nil
     end
 
     # Generates an update payload for the provided product records
@@ -247,15 +251,17 @@ module Agents
         begin
           # Delete custom fields that are no longer used
           @custom_field_client.delete(bc_product['id'], field['id'])
+        rescue BigCommerceProductError => e
+          emit_error(e)
         rescue => e
-          create_event payload: {
-            status: 500,
-            scope: 'delete_custom_fields',
-            message: e.message(),
-            trace: e.backtrace.join('\n'),
-            product_id: bc_product['id'],
-            deletes: custom_fields[:delete]
-          }
+          emit_error(BigCommerceProductError.new(
+            500,
+            'delete_custom_fields',
+            e.message,
+            bc_product['id'],
+            { sku: bc_product['sku'], field_id: field['id'] },
+            e
+          ))
         end
       end
 
@@ -316,14 +322,17 @@ module Agents
             status: 200,
           }
         end
+      rescue BigCommerceProductError => e
+        emit_error(e)
       rescue => e
-        create_event payload: {
-          status: 500,
-          scope: 'upsert_products',
-          message: e.message,
-          trace: e.backtrace.join('\n'),
-          product_data: product_data,
-        }
+        emit_error(BigCommerceProductError.new(
+          500,
+          'upsert_products',
+          e.message,
+          nil,
+          { sku: product_data.map { |p| p['sku'] } },
+          e
+        ))
       end
     end
 
@@ -354,14 +363,17 @@ module Agents
         end
 
         return bc_payload
+      rescue BigCommerceProductError => e
+        emit_error(e)
       rescue => e
-        create_event payload: {
-          status: 500,
-          scope: 'map_product',
-          message: e.message(),
-          trace: e.backtrace.join('\n'),
-          product_payload: bc_payload,
-        }
+        emit_error(BigCommerceProductError.new(
+          500,
+          'map_product',
+          e.message,
+          bc_product['id'],
+          { sku: bc_product['sku'] },
+          e
+        ))
       end
 
       return nil
@@ -375,19 +387,20 @@ module Agents
 
       begin
         return get_mapper(:CustomFieldMapper).map(options['custom_fields_map'], raw_product, bc_payload, current_fields, options['meta_fields_namespace'])
+      rescue BigCommerceProductError => e
+        emit_error(e)
       rescue => e
-        create_event payload: {
-          status: 500,
-          scope: 'map_custom_fields',
-          message: e.message(),
-          trace: e.backtrace.join('\n'),
-          field_map: options['custom_fields_map'],
-          raw_product: raw_product,
-          product_payload: bc_payload,
-        }
-
-        return nil
+        emit_error(BigCommerceProductError.new(
+          500,
+          'map_custom_fields',
+          e.message,
+          bc_payload['id'],
+          { sku: bc_payload['sku'] },
+          e
+        ))
       end
+
+      return nil
     end
 
     #  Manages meta field values for the provided product records.
@@ -398,15 +411,18 @@ module Agents
 
       begin
         current_fields = @meta_field_client.get_for_product(bc_payload['id'])
+      rescue BigCommerceProductError => e
+        emit_error(e)
+        return nil
       rescue => e
-        create_event payload: {
-          status: 500,
-          scope: 'update_meta_fields',
-          message: "Failed to lookup existing meta fields: #{e.message()}",
-          trace: e.backtrace.join('\n'),
-          product_id: bc_payload['id'],
-        }
-
+        emit_error(BigCommerceProductError.new(
+          500,
+          'get_meta_fields',
+          e.message,
+          bc_payload['id'],
+          { sku: bc_payload['sku'] },
+          e
+        ))
         return nil
       end
 
@@ -417,15 +433,17 @@ module Agents
         fields[:delete].each do |field|
             begin
               @meta_field_client.delete(bc_payload['id'], field['id'])
+            rescue BigCommerceProductError => e
+              emit_error(e)
             rescue => e
-              create_event payload: {
-                status: 500,
-                scope: 'update_meta_fields',
-                message: "Failed to delete meta field: #{e.message()}",
-                trace: e.backtrace.join('\n'),
-                product_id: bc_payload['id'],
-                field: field,
-              }
+              emit_error(BigCommerceProductError.new(
+                500,
+                'delete meta_fields',
+                e.message,
+                bc_payload['id'],
+                { sku: bc_payload['sku'] },
+                e
+              ))
             end
         end
 
@@ -433,33 +451,35 @@ module Agents
         fields[:upsert].each do |field|
           begin
             @meta_field_client.upsert(bc_payload['id'], field)
+          rescue BigCommerceProductError => e
+            emit_error(e)
           rescue => e
-            create_event payload: {
-              status: 500,
-              scope: 'update_meta_fields',
-              message: "Failed to update meta field: #{e.message()}",
-              trace: e.backtrace.join('\n'),
-              product_id: bc_payload['id'],
-              field: field,
-            }
+            emit_error(BigCommerceProductError.new(
+              500,
+              'upsert_meta_fields',
+              e.message,
+              bc_payload['id'],
+              { sku: bc_payload['sku'] },
+              e
+            ))
           end
         end
 
         return fields
+      rescue BigCommerceProductError => e
+        emit_error(e)
       rescue => e
-        create_event payload: {
-          status: 500,
-          scope: 'update_meta_fields',
-          message: "Failed to map meta field data: #{e.message()}",
-          trace: e.backtrace.join('\n'),
-          field_map: options['meta_fields_map'],
-          raw_product: raw_product,
-          bc_payload: bc_payload,
-          current_fields: current_fields,
-        }
-
-        return nil
+        emit_error(BigCommerceProductError.new(
+          500,
+          'map_meta_fields',
+          e.message,
+          bc_payload['id'],
+          { sku: bc_payload['sku'] },
+          e
+        ))
       end
+
+      return nil
     end
 
     private
@@ -481,6 +501,27 @@ module Agents
 
     def get_mapper(class_name)
         return ::BigcommerceProductAgent::Mapper.const_get(class_name.to_sym)
+    end
+
+    #  Takes a BigCommerceProductError and emits the underlying data as an error payload
+    #  to assist with error reporting. It is recommended that these errors be consolidated
+    #  with a Digest Agent and reported as a summary.
+    def emit_error(error)
+
+      payload = {
+        status: error.status,
+        message: error.message,
+        scope: error.scope,
+        product_identifier: error.product_identifier,
+        data: error.data,
+      }
+
+      Rails.logger.debug({
+        error: payload,
+        trace: error.backtrace
+      })
+
+      create_event({ payload: payload })
     end
   end
 end
