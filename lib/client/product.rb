@@ -97,12 +97,26 @@ module BigcommerceProductAgent
             def get_by_skus(skus, include = %w[custom_fields modifiers], include_fields = %w[sku])
                 products = []
                 skus.each do |sku|
-                    data = index({
-                        'sku': sku,
-                        include: include.join(','),
-                        include_fields: include_fields.join(','),
-                    })
-                    products.push(data[0])
+                    begin
+                        data = index({
+                            'sku': sku,
+                            include: include.join(','),
+                            include_fields: include_fields.join(','),
+                        })
+                        if not data.empty?
+                            products.push(data[0])
+                        end
+                    rescue Faraday::Error::ClientError => e
+                      raise BigCommerceProductError.new(
+                        e.response[:status],
+                        'get by sku',
+                        'Failed to get existing product data',
+                        sku,
+                        {
+                          related_skus: skus,
+                        }
+                      )
+                    end
                 end
 
                 return products
