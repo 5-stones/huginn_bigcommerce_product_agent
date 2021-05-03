@@ -234,7 +234,7 @@ module Agents
           'create_new_product',
           e.message,
           nil,
-          { sku: bc_product['sku'] },
+          { sku: raw_product['sku'] },
           e
         ))
       end
