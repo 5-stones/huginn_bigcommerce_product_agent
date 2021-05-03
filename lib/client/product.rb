@@ -12,13 +12,13 @@ module BigcommerceProductAgent
                     return response.body['data']
                 rescue Faraday::Error::ClientError => e
                   raise BigCommerceProductError.new(
-                    e.response_status,
+                    e.response[:status],
                     'update product',
                     'Failed to update product',
                     id,
                     {
                       sku: payload[:sku],
-                      errors: e.response_body['errors'],
+                      errors: JSON.parse(e.response[:body])['errors'],
                     },
                     e
                   )
@@ -34,14 +34,14 @@ module BigcommerceProductAgent
                   return response.body['data']
               rescue Faraday::Error::ClientError => e
                 raise BigCommerceProductError.new(
-                  e.response_status,
+                  e.response[:status],
                   'update product',
                   'Failed to update product batch',
                   {
                     product_identifiers: payload.map { |p|
                       { id: p[:id], sku: p[:sku] }
                     },
-                    errors: e.response_body['errors'],
+                    errors: JSON.parse(e.response[:body])['errors'],
                   },
                   e
                 )
@@ -61,14 +61,23 @@ module BigcommerceProductAgent
 
                     return response.body['data']
                 rescue Faraday::Error::ClientError => e
+
+                  Rails.logger.info('RESPONSE OBJECT:  ------------------------------------------')
+                      Rails.logger.info(e.response.inspect)
+                  Rails.logger.info('------------------------------------------------------------')
+
+                  Rails.logger.info('RESPONSE METHODS:  -----------------------------------------')
+                      Rails.logger.info(e.response.methods)
+                  Rails.logger.info('------------------------------------------------------------')
+
                   raise BigCommerceProductError.new(
-                    e.response_status,
+                    e.response[:status],
                     'create product',
                     'Failed to create product',
                     nil,
                     {
                       sku: payload[:sku],
-                      errors: e.response_body['errors'],
+                      errors: JSON.parse(e.response[:body])['errors'],
                     },
                     e
                   )

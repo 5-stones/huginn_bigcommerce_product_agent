@@ -34,13 +34,13 @@ module BigcommerceProductAgent
                 client.delete(uri(product_id: product_id, custom_field_id: custom_field_id))
               rescue Faraday::Error::ClientError => e
                   raise BigCommerceProductError.new(
-                    e.response_status,
+                    e.response[:status],
                     'delete custom field',
                     'Failed to delete custom field',
                     product_id,
                     {
                       custom_field_id: custom_field_id,
-                      errors: e.response_body['errors']
+                      errors: JSON.parse(e.response[:body])['errors']
                     },
                     e
                   )
@@ -58,14 +58,14 @@ module BigcommerceProductAgent
                 rescue Faraday::Error::ClientError => e
                   # include the field ID and name in the error here as _create_ requests have no ID
                   raise BigCommerceProductError.new(
-                    e.response_status,
+                    e.response[:status],
                     'upsert custom field',
                     'Failed to delete custom field',
                     product_id,
                     {
                       custom_field_id: payload['id'],
                       field_name: payload[:name],
-                      errors: e.response_body['errors'],
+                      errors: JSON.parse(e.response[:body])['errors']
                     },
                     e
                   )
