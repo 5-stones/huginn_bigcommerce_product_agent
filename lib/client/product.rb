@@ -114,6 +114,7 @@ module BigcommerceProductAgent
                         sku,
                         {
                           related_skus: skus,
+                          errors: JSON.parse(e.response[:body])['errors'],
                         }
                       )
                     end
