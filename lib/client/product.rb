@@ -95,11 +95,30 @@ module BigcommerceProductAgent
 
             # When using sku:in you must specify the fields you want returned.
             def get_by_skus(skus, include = %w[custom_fields modifiers], include_fields = %w[sku])
-                products = index({
-                    'sku:in': skus.join(','),
-                    include: include.join(','),
-                    include_fields: include_fields.join(','),
-                })
+                products = []
+                skus.each do |sku|
+                    begin
+                        data = index({
+                            'sku': sku,
+                            include: include.join(','),
+                            include_fields: include_fields.join(','),
+                        })
+                        if not data.empty?
+                            products.push(data[0])
+                        end
+                    rescue Faraday::Error::ClientError => e
+                      raise BigCommerceProductError.new(
+                        e.response[:status],
+                        'get by sku',
+                        'Failed to get existing product data',
+                        sku,
+                        {
+                          related_skus: skus,
+                          errors: JSON.parse(e.response[:body])['errors'],
+                        }
+                      )
+                    end
+                end
 
                 return products
             end
