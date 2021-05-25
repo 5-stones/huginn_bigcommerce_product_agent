@@ -1,3 +1,17 @@
+# [2.1.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v2.0.0...v2.1.0) (2021-05-25)
+
+
+### Bug Fixes
+
+* **error handling:** Fix Faraday response processing ([7add633](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/7add6338920394f38500b8e1cb2984374d9a55ba))
+
+
+### Features
+
+* **BigCommerceProductError:** Streamline error handling/logging ([109687c](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/109687cf44fac13bd98de6974dad4d265183dce3))
+
+
+
 # [2.0.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v1.12.0...v2.0.0) (2021-03-24)
 
 
