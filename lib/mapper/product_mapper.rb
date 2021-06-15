@@ -30,7 +30,7 @@ module BigcommerceProductAgent
                   type: isDigital ? 'digital' : 'physical',
                   weight: product['weight'] ? product['weight']['value'] : '0',
                   width: product['width'] ? product['width']['value'] : '0',
-                  inventory_tracking: isDigital || !track_inventory || !product['trackInventory'] ? 'none' : 'product',
+                  inventory_tracking: isDigital || !track_inventory ? 'none' : 'product',
                 }
                 result[:upc] = product['isbn'] ? product['isbn'] : product['gtin12']
                 result[:gtin] = product['gtin12'] if product['gtin12']
