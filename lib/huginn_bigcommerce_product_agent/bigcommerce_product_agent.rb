@@ -342,6 +342,7 @@ module Agents
       bc_payload = nil
 
       begin
+        # if track inventory on the agent is true set track inventory to product level track inventory
         track_inventory = boolify(options['track_inventory']).nil? ? true : boolify(options['track_inventory'])
         if (track_inventory)
           track_inventory = boolify(raw_product['trackInventory'])
