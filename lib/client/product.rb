@@ -37,10 +37,10 @@ module BigcommerceProductAgent
                   e.response[:status],
                   'update product',
                   'Failed to update product batch',
+                  payload.map { |p|
+                    { sku: p[:sku] }
+                  },
                   {
-                    product_identifiers: payload.map { |p|
-                      { id: p[:id], sku: p[:sku] }
-                    },
                     errors: JSON.parse(e.response[:body])['errors'],
                   },
                   e
@@ -115,7 +115,8 @@ module BigcommerceProductAgent
                         {
                           related_skus: skus,
                           errors: JSON.parse(e.response[:body])['errors'],
-                        }
+                        },
+                        e
                       )
                     end
                 end
