@@ -330,7 +330,7 @@ module Agents
           'upsert_products',
           e.message,
           nil,
-          { sku: product_data.map { |p| p['sku'] } },
+          { sku: product_data.map { |p| p[:sku] } },
           e
         ))
       end
