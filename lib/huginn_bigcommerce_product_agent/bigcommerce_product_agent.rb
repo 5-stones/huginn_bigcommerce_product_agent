@@ -351,6 +351,11 @@ module Agents
         bc_payload['id'] = bc_product['id'] unless bc_product.nil? || bc_product['id'].nil?
         # NOTE: bc_product will be nil when this is called with `to_create` products
 
+        if bc_payload[:categories].empty?
+          # If categories is empty keep existing categories because categories should never be empty
+          bc_payload[:categories] = bc_product['categories'] unless bc_product.nil? || bc_product['categories'].nil?
+        end
+
         if bc_payload[:type] == 'digital'
           bc_payload[:name].concat(' (Digital)')
         end
