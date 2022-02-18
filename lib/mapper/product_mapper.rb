@@ -15,7 +15,7 @@ module BigcommerceProductAgent
                   description: product['description'] || '',
                   height: product['height'] ? product['height']['value'] : '0',
                   is_default: product['isDefault'],
-                  is_preorder_only: self.get_availability(product) == 'preorder' ? true : false,
+                  is_preorder_only: false,
                   is_visible: true,
                   meta_description: self.meta_description(product) || '',
                   meta_keywords: self.meta_keywords(product),
