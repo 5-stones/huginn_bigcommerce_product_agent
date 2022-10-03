@@ -32,6 +32,13 @@ module BigcommerceProductAgent
                   width: product['width'] ? product['width']['value'] : '0',
                   inventory_tracking: isDigital || !track_inventory ? 'none' : 'product',
                 }
+
+                stock = get_additional_property_value(product, 'product_inventory', 0)
+
+                if (stock)
+                  result[:inventory_level] = stock
+                end
+
                 result[:upc] = product['isbn'] ? product['isbn'] : product['gtin12']
                 result[:gtin] = product['gtin12'] if product['gtin12']
 
