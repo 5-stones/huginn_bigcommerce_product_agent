@@ -347,7 +347,7 @@ module Agents
         if (track_inventory)
           track_inventory = boolify(raw_product['trackInventory'])
         end
-        bc_payload = get_mapper(:ProductMapper).map_payload(raw_product, additional_data, track_inventory)
+        bc_payload = get_mapper(:ProductMapper).map_payload(raw_product, bc_product, additional_data, track_inventory)
         bc_payload['id'] = bc_product['id'] unless bc_product.nil? || bc_product['id'].nil?
         # NOTE: bc_product will be nil when this is called with `to_create` products
 

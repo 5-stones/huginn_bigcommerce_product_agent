@@ -94,7 +94,7 @@ module BigcommerceProductAgent
             end
 
             # When using sku:in you must specify the fields you want returned.
-            def get_by_skus(skus, include = %w[custom_fields modifiers], include_fields = %w[sku categories])
+            def get_by_skus(skus, include = %w[custom_fields modifiers], include_fields = %w[sku categories inventory_tracking])
                 products = []
                 skus.each do |sku|
                     begin

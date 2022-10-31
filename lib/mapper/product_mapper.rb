@@ -2,7 +2,7 @@ module BigcommerceProductAgent
     module Mapper
         class ProductMapper
 
-            def self.map_payload(product, additional_data = {}, track_inventory = true, default_sku = '')
+            def self.map_payload(product, bc_product, additional_data = {}, track_inventory = true, default_sku = '')
                 name = product['name']
                 isDigital = product['isDigital'].to_s == 'true'
 
@@ -30,8 +30,30 @@ module BigcommerceProductAgent
                   type: isDigital ? 'digital' : 'physical',
                   weight: product['weight'] ? product['weight']['value'] : '0',
                   width: product['width'] ? product['width']['value'] : '0',
-                  inventory_tracking: isDigital || !track_inventory ? 'none' : 'product',
                 }
+
+                #  BEGIN:  The following block is a workaround for a BigCommerce bug.
+                #
+                #  It seems that when the `inventory_tracking` attribute is included in the payload,
+                #  BigCommerce is now triggering a low stock warning for products with inventory
+                #  tracking disabled.
+                #
+                #  We are currently seeing notifications for _every digital product_ each time
+                #  the sync process runs.
+                #
+                #  Pending a fix from BigCommerce the following logic is designed to mitigate
+                #  the false alarms. Essentially, we will only be including the `inventory_tracking`
+                #  attribute if the value is _changing_ from whatever is currently set.
+                #  While this may not stop _all_ of the false alarms, it should reduce them
+                #  significantly.
+                current_tracking_value = bc_product['inventory_tracking']
+                new_tracking_value = isDigital || !track_inventory ? 'none' : 'product'
+
+                if (current_tracking_value != new_tracking_value)
+                  result[:inventory_tracking] = new_tracking_value
+                end
+                #  END:   Stock warning workaround
+
 
                 stock = get_additional_property_value(product, 'product_inventory', 0)
 
