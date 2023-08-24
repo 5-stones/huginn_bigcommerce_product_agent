@@ -46,7 +46,7 @@ module BigcommerceProductAgent
                 #  attribute if the value is _changing_ from whatever is currently set.
                 #  While this may not stop _all_ of the false alarms, it should reduce them
                 #  significantly.
-                current_tracking_value = bc_product['inventory_tracking']
+                current_tracking_value = bc_product['inventory_tracking'] unless bc_product.nil?
                 new_tracking_value = isDigital || !track_inventory ? 'none' : 'product'
 
                 if (current_tracking_value != new_tracking_value)
