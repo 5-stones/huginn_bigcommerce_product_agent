@@ -25,7 +25,6 @@ module Agents
         'meta_fields_namespace' => '',
         'not_purchasable_format_list' => [],
         'should_disambiguate' => false,
-
       }
     end
 
