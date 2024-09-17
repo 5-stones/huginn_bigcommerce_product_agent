@@ -1,3 +1,20 @@
+# [2.3.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v2.2.0...v2.3.0) (2024-09-17)
+
+
+### Bug Fixes
+
+* **lib/*:** prevent false low stock warnings ([a7263f2](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/a7263f280451d5cfdfa2f208e3346d38948d100e))
+* **product_mapper:** check if bc_product exists ([ce60155](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/ce601558ae9142de09616c73bd6c2c471812fff7))
+* **product_mapper:** ensure the agent _sets_ inventory level in BigCommerce ([8a1eb3e](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/8a1eb3e6c3b9adc78d71966bc5c8797b191f7aaa))
+
+
+### Features
+
+* **mapper:** respect the `is_visible` setting of a bigcommerce product on update ([3fb867d](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/3fb867da907aef172e232a8c3ae5d505757faa10))
+* **product_mapper:** fix preorder toggle ([3412979](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/3412979a268807484f4826e9bae4ba4bb46fee37))
+
+
+
 # [2.2.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v2.1.0...v2.2.0) (2021-08-17)
 
 
