@@ -1,3 +1,12 @@
+## [2.3.1](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v2.3.0...v2.3.1) (2024-09-17)
+
+
+### Bug Fixes
+
+* **client:** fetch the `is_visible` field on products by default ([7acacc2](https://github.com/5-stones/huginn_bigcommerce_product_agent/commit/7acacc21b84726fbbfd6848d5a66587776dff098))
+
+
+
 # [2.3.0](https://github.com/5-stones/huginn_bigcommerce_product_agent/compare/v2.2.0...v2.3.0) (2024-09-17)
 
 

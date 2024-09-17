@@ -1,6 +1,6 @@
 {
   "name": "huginn_bigcommerce_product_agent",
-  "version": "2.3.0",
+  "version": "2.3.1",
   "description": "Huginn Agent that takes a generic product interface and upserts that product in BigCommerce.",
   "scripts": {
     "version": "npm run changelog && git add CHANGELOG.md && npm run version:gemspec",
