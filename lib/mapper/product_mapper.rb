@@ -8,6 +8,13 @@ module BigcommerceProductAgent
 
                 track_inventory = self.get_availability(product) == 'preorder' ? false : track_inventory
 
+                # respect the visibility setting of existing products, otherwise
+                # default visibility to true.
+                is_visible = true
+                if !bc_product.nil? && !bc_product['is_visible'].nil?
+                  is_visible = bc_product['is_visible']
+                end
+
                 result = {
                   availability: self.get_availability(product),
                   categories: self.get_categories(product),
@@ -16,7 +23,7 @@ module BigcommerceProductAgent
                   height: product['height'] ? product['height']['value'] : '0',
                   is_default: product['isDefault'],
                   is_preorder_only: false,
-                  is_visible: true,
+                  is_visible: is_visible,
                   meta_description: self.meta_description(product) || '',
                   meta_keywords: self.meta_keywords(product),
                   name: name,
